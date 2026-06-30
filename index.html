@@ -425,7 +425,7 @@ const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY_AQUI';
 // ============================================================
 
 const isConfigured = !SUPABASE_URL.includes('SUA_SUPABASE_URL_AQUI') && !SUPABASE_ANON_KEY.includes('SUA_SUPABASE_ANON_KEY_AQUI');
-const supabase = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const sb = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const TABLE = 'mural_events';
 
 const CAT_ORDER = ['influa','culto','vinte','lideranca','estudo','zadok','ferias','especial','feriado'];
@@ -604,7 +604,7 @@ async function loadData(){
   if(!isConfigured) return;
   setSaveStatus('Sincronizando…', true);
   try{
-    const { data: rows, error } = await supabase.from(TABLE).select('*').order('created_at', { ascending:true });
+    const { data: rows, error } = await sb.from(TABLE).select('*').order('created_at', { ascending:true });
     if(error) throw error;
     data = emptyDataShape();
     rows.forEach(r => {
@@ -626,7 +626,7 @@ async function seedAll(){
   setSaveStatus('Carregando dados originais…', true);
   try{
     const rows = flattenData(DEFAULT_DATA);
-    const { error } = await supabase.from(TABLE).insert(rows);
+    const { error } = await sb.from(TABLE).insert(rows);
     if(error) throw error;
     await loadData();
   }catch(e){
@@ -638,11 +638,11 @@ async function seedAll(){
 async function replaceAllWithData(newDataShape){
   setSaveStatus('Atualizando…', true);
   try{
-    const { error: delError } = await supabase.from(TABLE).delete().not('id','is',null);
+    const { error: delError } = await sb.from(TABLE).delete().not('id','is',null);
     if(delError) throw delError;
     const rows = flattenData(newDataShape);
     if(rows.length){
-      const { error: insError } = await supabase.from(TABLE).insert(rows);
+      const { error: insError } = await sb.from(TABLE).insert(rows);
       if(insError) throw insError;
     }
     await loadData();
@@ -655,11 +655,11 @@ async function replaceAllWithData(newDataShape){
 async function replaceMonthWithDefault(month){
   setSaveStatus('Restaurando mês…', true);
   try{
-    const { error: delError } = await supabase.from(TABLE).delete().eq('month', month);
+    const { error: delError } = await sb.from(TABLE).delete().eq('month', month);
     if(delError) throw delError;
     const rows = flattenData({ [month]: DEFAULT_DATA[month] });
     if(rows.length){
-      const { error: insError } = await supabase.from(TABLE).insert(rows);
+      const { error: insError } = await sb.from(TABLE).insert(rows);
       if(insError) throw insError;
     }
     await loadData();
@@ -672,7 +672,7 @@ async function replaceMonthWithDefault(month){
 async function addEvent(month, day, text, category, hour){
   setSaveStatus('Salvando…', true);
   try{
-    const { error } = await supabase.from(TABLE).insert({ month, day, text, category, hour });
+    const { error } = await sb.from(TABLE).insert({ month, day, text, category, hour });
     if(error) throw error;
     await loadData();
   }catch(e){
@@ -684,7 +684,7 @@ async function addEvent(month, day, text, category, hour){
 async function updateEvent(id, text, category, hour){
   setSaveStatus('Salvando…', true);
   try{
-    const { error } = await supabase.from(TABLE).update({ text, category, hour }).eq('id', id);
+    const { error } = await sb.from(TABLE).update({ text, category, hour }).eq('id', id);
     if(error) throw error;
     await loadData();
   }catch(e){
@@ -696,7 +696,7 @@ async function updateEvent(id, text, category, hour){
 async function deleteEvent(id){
   setSaveStatus('Excluindo…', true);
   try{
-    const { error } = await supabase.from(TABLE).delete().eq('id', id);
+    const { error } = await sb.from(TABLE).delete().eq('id', id);
     if(error) throw error;
     await loadData();
   }catch(e){
@@ -966,7 +966,7 @@ if(!isConfigured){
 } else {
   loadData();
   // Sincronização em tempo real: qualquer mudança de qualquer pessoa recarrega o mural
-  supabase
+ sb
     .channel('mural-events-changes')
     .on('postgres_changes', { event:'*', schema:'public', table: TABLE }, () => {
       clearTimeout(realtimeDebounceTimer);
