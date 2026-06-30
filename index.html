@@ -684,12 +684,12 @@ function emptyDataShape(){
   return obj;
 }
 
-function flattenData(d){
+function flattenData(d, source){
   const rows = [];
   Object.keys(d).forEach(m => {
     Object.keys(d[m]).forEach(day => {
       d[m][day].forEach(ev => {
-        rows.push({ month:Number(m), day:Number(day), text:ev.t, category:ev.c, hour:ev.h || '' });
+        rows.push({ month:Number(m), day:Number(day), text:ev.t, category:ev.c, hour:ev.h || '', source: source || 'sheet' });
       });
     });
   });
@@ -777,7 +777,7 @@ async function replaceMonthWithDefault(month){
 async function addEvent(month, day, text, category, hour){
   setSaveStatus('Salvando…', true);
   try{
-    const { error } = await sb.from(TABLE).insert({ month, day, text, category, hour });
+    const { error } = await sb.from(TABLE).insert({ month, day, text, category, hour, source: 'manual' });
     if(error) throw error;
     await loadData();
   }catch(e){
