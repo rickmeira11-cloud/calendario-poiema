@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>Murau: Calendário 2026 - Poiema BNU 💎</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -51,6 +54,15 @@
     font-size:clamp(22px,2.8vw,34px);
     margin:0 0 4px;
     letter-spacing:-0.01em;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  header.top h1 img{
+    height:1em;
+    width:auto;
+    filter:invert(1);
+    flex:none;
   }
   header.top p.sub{
     margin:0 0 16px;
@@ -383,7 +395,7 @@
 <body>
 
 <header class="top">
-  <h1>💎 Murau: Calendário 2026 - Poiema BNU</h1>
+  <h1><img src="logo-poiema.png" alt="Poiema"> Murau: Calendário 2026 - Poiema BNU</h1>
   <p class="sub">Julho a Dezembro · sincronizado em tempo real via Supabase · clique em qualquer evento para editar · clique em "+" para adicionar</p>
   <div class="toolbar">
     <button id="addLegendInfo" type="button">ℹ️ Como usar</button>
@@ -966,7 +978,7 @@ if(!isConfigured){
 } else {
   loadData();
   // Sincronização em tempo real: qualquer mudança de qualquer pessoa recarrega o mural
- sb
+  supabase
     .channel('mural-events-changes')
     .on('postgres_changes', { event:'*', schema:'public', table: TABLE }, () => {
       clearTimeout(realtimeDebounceTimer);
