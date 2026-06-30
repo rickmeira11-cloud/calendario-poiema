@@ -559,83 +559,9 @@
   .btn-reject{ background:#EFEDE6; color:#555; }
   .btn-reject:hover{ background:#E3E0D6; }
   .review-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; }
-
-  /* ---- Tela de login ---- */
-  .auth-gate{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-  }
-  .auth-card{
-    background:var(--paper);
-    border-radius:14px;
-    padding:32px 28px;
-    width:340px;
-    max-width:100%;
-    text-align:center;
-    box-shadow:0 20px 50px rgba(0,0,0,0.4);
-  }
-  .auth-card img{
-    height:48px;
-    margin-bottom:14px;
-  }
-  .auth-card h2{
-    font-family:'Poppins',sans-serif;
-    font-size:18px;
-    margin:0 0 6px;
-  }
-  .auth-card p{
-    font-size:13px;
-    color:var(--ink-soft);
-    margin:0 0 18px;
-    line-height:1.5;
-  }
-  .auth-card input[type=email]{
-    width:100%;
-    border:1px solid #DDD8CC;
-    border-radius:8px;
-    padding:10px 12px;
-    font-family:'Inter',sans-serif;
-    font-size:14px;
-    margin-bottom:10px;
-  }
-  .auth-card button{
-    width:100%;
-    font-family:'Inter',sans-serif;
-    font-weight:600;
-    font-size:13.5px;
-    border:none;
-    border-radius:8px;
-    padding:10px 0;
-    cursor:pointer;
-    background:#2B2A28;
-    color:#fff;
-  }
-  .auth-card button:hover{ background:#000; }
-  .auth-msg{
-    font-size:12px;
-    margin:12px 0 0;
-    color:var(--ink-soft);
-    line-height:1.4;
-  }
 </style>
 </head>
 <body>
-
-<div id="authGate" class="auth-gate" style="display:none;">
-  <div class="auth-card">
-    <img src="logo-poiema.png" alt="Poiema" style="filter:invert(0.15);">
-    <h2>Murau: Calendário 2026</h2>
-    <p>Acesso restrito à equipe Poiema BNU. Digite seu e-mail para receber um link de acesso.</p>
-    <input type="email" id="authEmail" placeholder="seu@email.com" autocomplete="email">
-    <button id="authSendBtn" type="button">Enviar link de acesso</button>
-    <p class="auth-msg" id="authMsg"></p>
-  </div>
-</div>
-
-<div id="appContent" style="display:none;">
 
 <header class="top">
   <h1><img src="logo-poiema.png" alt="Poiema"> Murau: Calendário 2026 - Poiema BNU</h1>
@@ -648,7 +574,6 @@
     <button id="exportBtn" type="button">⬇️ Exportar backup (.json)</button>
     <button id="importBtn" type="button">⬆️ Importar backup</button>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
-    <button id="logoutBtn" type="button" style="display:none;">🚪 Sair (<span id="userEmailLabel"></span>)</button>
     <div class="save-status"><span class="save-dot" id="saveDot"></span><span id="saveText">Conectando…</span></div>
   </div>
   <div id="configWarning" class="banner warn" style="display:none;">
@@ -672,8 +597,6 @@
   dados, com sincronização em tempo real entre todos. Use "Exportar backup" periodicamente para guardar uma cópia de
   segurança em .json. "Restaurar tudo" apaga todos os dados atuais do banco e recarrega os dados originais extraídos da planilha.
 </footer>
-
-</div>
 
 <script>
 // ============================================================
@@ -1493,28 +1416,13 @@ document.getElementById('addLegendInfo').onclick = () => {
   alert('Como usar este mural:\n\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use os botões "restaurar" se quiser voltar aos dados originais da planilha (isso afeta todo mundo).');
 };
 
-// ---------- Autenticação ----------
-let appStarted = false;
-
-function updateAuthUI(session){
-  const gate = document.getElementById('authGate');
-  const app = document.getElementById('appContent');
-  const logoutBtn = document.getElementById('logoutBtn');
-  if(session){
-    gate.style.display = 'none';
-    app.style.display = 'block';
-    logoutBtn.style.display = 'inline-block';
-    document.getElementById('userEmailLabel').textContent = session.user.email;
-  } else {
-    gate.style.display = 'flex';
-    app.style.display = 'none';
-    logoutBtn.style.display = 'none';
-  }
-}
-
-function startApp(){
-  if(appStarted) return;
-  appStarted = true;
+// ---------- Inicialização ----------
+if(!isConfigured){
+  document.getElementById('configWarning').style.display = 'block';
+  setSaveStatus('Não configurado', false);
+  data = emptyDataShape();
+  renderLegend();
+} else {
   loadData();
   loadPendingChanges();
   // Sincronização em tempo real: qualquer mudança de qualquer pessoa recarrega o mural
@@ -1531,53 +1439,6 @@ function startApp(){
       loadPendingChanges();
     })
     .subscribe();
-}
-
-async function initAuth(){
-  const { data: { session } } = await sb.auth.getSession();
-  updateAuthUI(session);
-  if(session) startApp();
-
-  sb.auth.onAuthStateChange((event, session) => {
-    updateAuthUI(session);
-    if(event === 'SIGNED_IN') startApp();
-    if(event === 'SIGNED_OUT'){
-      appStarted = false;
-      document.getElementById('board').innerHTML = '';
-      data = emptyDataShape();
-    }
-  });
-}
-
-document.getElementById('authSendBtn').onclick = async () => {
-  const email = document.getElementById('authEmail').value.trim();
-  const msgEl = document.getElementById('authMsg');
-  if(!email){ msgEl.textContent = 'Digite um e-mail válido.'; return; }
-  msgEl.textContent = 'Enviando…';
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin, shouldCreateUser: false }
-  });
-  msgEl.textContent = error
-    ? (error.message.toLowerCase().includes('signup') || error.message.toLowerCase().includes('not allowed')
-        ? 'Esse e-mail ainda não tem acesso liberado. Peça para o administrador te convidar.'
-        : 'Erro: ' + error.message)
-    : 'Link enviado! Confira seu e-mail (e a caixa de spam) e clique para entrar.';
-};
-
-document.getElementById('logoutBtn').onclick = async () => {
-  await sb.auth.signOut();
-};
-
-// ---------- Inicialização ----------
-if(!isConfigured){
-  document.getElementById('configWarning').style.display = 'block';
-  setSaveStatus('Não configurado', false);
-  data = emptyDataShape();
-  renderLegend();
-  document.getElementById('appContent').style.display = 'block';
-} else {
-  initAuth();
 }
 </script>
 </body>
