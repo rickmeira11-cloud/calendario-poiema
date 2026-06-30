@@ -63,6 +63,48 @@ function splitEvents(cellText) {
     .filter(Boolean);
 }
 
+// ---------- Comparação "inteligente" de texto ----------
+// Evita falsos positivos de "removeu + adicionou" quando a mudança real
+// é só um espaço a mais, troca de maiúscula/minúscula, etc.
+function normalize(text) {
+  return (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/\s+/g, ' ');
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = new Array(n + 1);
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1]
+        ? prev
+        : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = temp;
+    }
+  }
+  return dp[n];
+}
+
+// Retorna um número de 0 (totalmente diferente) a 1 (idêntico)
+function similarity(a, b) {
+  if (!a.length && !b.length) return 1;
+  const dist = levenshtein(a, b);
+  return 1 - dist / Math.max(a.length, b.length);
+}
+
+// Limiar a partir do qual dois textos diferentes são tratados como
+// "a mesma linha foi editada" em vez de "uma sumiu e outra apareceu".
+const EDIT_SIMILARITY_THRESHOLD = 0.55;
+
 async function fetchSheetCSV() {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
   const res = await fetch(url);
@@ -201,10 +243,51 @@ module.exports = async (req, res) => {
         const day = Number(dayStr);
         const sheetTexts = sheetData[month][day];
         const currentForDay = sheetSourced.filter(e => e.month === month && e.day === day);
-        const currentTexts = currentForDay.map(e => e.text);
 
+        // 1ª passada: combina o que é idêntico (ignorando espaços/maiúsculas) —
+        // isso nunca vira proposta, é tratado como "sem mudança real".
+        const usedCurrent = new Set();
+        const unmatchedSheetTexts = [];
         sheetTexts.forEach(text => {
-          if (!currentTexts.includes(text)) {
+          const ni = normalize(text);
+          const matchIdx = currentForDay.findIndex((ev, idx) => !usedCurrent.has(idx) && normalize(ev.text) === ni);
+          if (matchIdx !== -1) {
+            usedCurrent.add(matchIdx);
+          } else {
+            unmatchedSheetTexts.push(text);
+          }
+        });
+        const unmatchedCurrent = currentForDay
+          .map((ev, idx) => ({ ev, idx }))
+          .filter(({ idx }) => !usedCurrent.has(idx));
+
+        // 2ª passada: entre o que sobrou, tenta parear por similaridade de texto.
+        // Se for parecido o bastante, é uma EDIÇÃO (uma proposta só, mais clara).
+        // Se não for parecido com nada, é de fato um ADD novo ou um REMOVE de verdade.
+        const usedCurrentForEdit = new Set();
+        unmatchedSheetTexts.forEach(text => {
+          let best = null;
+          let bestScore = 0;
+          unmatchedCurrent.forEach(({ ev, idx }) => {
+            if (usedCurrentForEdit.has(idx)) return;
+            const score = similarity(normalize(text), normalize(ev.text));
+            if (score > bestScore) { bestScore = score; best = { ev, idx }; }
+          });
+
+          if (best && bestScore >= EDIT_SIMILARITY_THRESHOLD) {
+            usedCurrentForEdit.add(best.idx);
+            proposals.push(makeProposal({
+              month, day,
+              change_type: 'edit',
+              new_text: text,
+              new_category: guessCategory(text),
+              new_hour: best.ev.hour || '',
+              old_text: best.ev.text,
+              old_category: best.ev.category,
+              old_hour: best.ev.hour,
+              matched_event_id: best.ev.id
+            }));
+          } else {
             proposals.push(makeProposal({
               month, day,
               change_type: 'add',
@@ -215,32 +298,61 @@ module.exports = async (req, res) => {
           }
         });
 
-        currentForDay.forEach(ev => {
-          if (!sheetTexts.includes(ev.text)) {
-            proposals.push(makeProposal({
-              month, day,
-              change_type: 'remove',
-              old_text: ev.text,
-              old_category: ev.category,
-              old_hour: ev.hour,
-              matched_event_id: ev.id
-            }));
-          }
+        unmatchedCurrent.forEach(({ ev, idx }) => {
+          if (usedCurrentForEdit.has(idx)) return; // já virou proposta de edição acima
+          proposals.push(makeProposal({
+            month, day,
+            change_type: 'remove',
+            old_text: ev.text,
+            old_category: ev.category,
+            old_hour: ev.hour,
+            matched_event_id: ev.id
+          }));
         });
       });
     });
 
-    // Limpa propostas pendentes antigas (a varredura de agora é a fonte da verdade)
-    await supabaseRequest('mural_pending_changes?status=eq.pending', { method: 'DELETE', prefer: 'return=minimal' });
+    // ---------- Sincroniza a tabela de propostas SEM apagar tudo ----------
+    // Em vez de limpar e recriar (o que podia fazer uma proposta sumir da tela
+    // de alguém no meio de uma revisão), comparamos com o que já está pendente:
+    // só inserimos o que é genuinamente novo, e só removemos o que ficou obsoleto.
+    function proposalKey(p) {
+      const textPart = p.change_type === 'remove' ? p.old_text : p.new_text;
+      return [p.month, p.day, p.change_type, textPart].join('||');
+    }
 
-    if (proposals.length) {
-      await supabaseRequest('mural_pending_changes', {
-        method: 'POST',
-        body: JSON.stringify(proposals)
+    const existingPending = await supabaseRequest(
+      'mural_pending_changes?status=eq.pending&select=id,month,day,change_type,new_text,old_text'
+    );
+
+    const desiredMap = new Map(proposals.map(p => [proposalKey(p), p]));
+    const existingMap = new Map(existingPending.map(p => [proposalKey(p), p]));
+
+    const toInsert = proposals.filter(p => !existingMap.has(proposalKey(p)));
+    const toDeleteIds = existingPending
+      .filter(p => !desiredMap.has(proposalKey(p)))
+      .map(p => p.id);
+
+    if (toDeleteIds.length) {
+      await supabaseRequest(`mural_pending_changes?id=in.(${toDeleteIds.join(',')})`, {
+        method: 'DELETE',
+        prefer: 'return=minimal'
       });
     }
 
-    res.status(200).json({ ok: true, proposalsCount: proposals.length });
+    if (toInsert.length) {
+      await supabaseRequest('mural_pending_changes', {
+        method: 'POST',
+        body: JSON.stringify(toInsert)
+      });
+    }
+
+    res.status(200).json({
+      ok: true,
+      proposalsCount: proposals.length,
+      newCount: toInsert.length,
+      staleRemoved: toDeleteIds.length
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
