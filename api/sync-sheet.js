@@ -136,6 +136,31 @@ async function supabaseRequest(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+// ---------- Monta uma "proposta" sempre com o MESMO conjunto de chaves ----------
+// Isso é o que corrige o erro PGRST102 ("All object keys must match"):
+// o Supabase exige que todo objeto de um insert em lote tenha as mesmas colunas,
+// então preenchemos com null tudo que não se aplica ao tipo de mudança.
+function makeProposal({
+  month, day, change_type,
+  new_text = null, new_category = null, new_hour = null,
+  old_text = null, old_category = null, old_hour = null,
+  matched_event_id = null
+}) {
+  return {
+    month,
+    day,
+    change_type,
+    new_text,
+    new_category,
+    new_hour,
+    old_text,
+    old_category,
+    old_hour,
+    matched_event_id,
+    status: 'pending'
+  };
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST' && req.method !== 'GET') {
     res.status(405).json({ error: 'Método não permitido' });
@@ -166,28 +191,26 @@ module.exports = async (req, res) => {
 
         sheetTexts.forEach(text => {
           if (!currentTexts.includes(text)) {
-            proposals.push({
+            proposals.push(makeProposal({
               month, day,
               change_type: 'add',
               new_text: text,
               new_category: guessCategory(text),
-              new_hour: '',
-              status: 'pending'
-            });
+              new_hour: ''
+            }));
           }
         });
 
         currentForDay.forEach(ev => {
           if (!sheetTexts.includes(ev.text)) {
-            proposals.push({
+            proposals.push(makeProposal({
               month, day,
               change_type: 'remove',
               old_text: ev.text,
               old_category: ev.category,
               old_hour: ev.hour,
-              matched_event_id: ev.id,
-              status: 'pending'
-            });
+              matched_event_id: ev.id
+            }));
           }
         });
       });
