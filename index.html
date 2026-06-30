@@ -586,7 +586,15 @@
     .days-grid{ grid-auto-rows:64px; gap:2px; }
     .day-cell{ padding:2px 2px 1px; }
     .day-num{ font-size:9px; }
-    .event-chip{ font-size:8px; padding:1.5px 3px; }
+    .event-chip{
+      font-size:8px;
+      padding:1.5px 3px;
+      display:block;
+      -webkit-line-clamp:unset;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
     .more-btn{ font-size:8px; }
     .add-btn{ font-size:11px; }
     .weekdays span{ font-size:9px; }
@@ -1329,6 +1337,14 @@ function openDayOverview(month, day){
   document.body.appendChild(overlay);
 }
 
+// Reorganiza o mural se a tela mudar de tamanho (ex: girar o celular),
+// já que o número de eventos visíveis por dia depende da largura.
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(render, 250);
+});
+
 function render(){
   renderLegend();
   const board = document.getElementById('board');
@@ -1393,7 +1409,9 @@ function render(){
       if(!data[month]) data[month] = {};
       if(!data[month][d]) data[month][d] = [];
       const dayEvents = data[month][d];
-      const VISIBLE_LIMIT = 2;
+      // No celular a célula é mais baixa, então cabe só 1 evento por linha
+      // com folga — daí mostramos 1 e deixamos o "+N mais" cuidar do resto.
+      const VISIBLE_LIMIT = window.innerWidth <= 640 ? 1 : 2;
       const visibleEvents = dayEvents.slice(0, VISIBLE_LIMIT);
       const hiddenCount = dayEvents.length - VISIBLE_LIMIT;
 
@@ -1418,12 +1436,14 @@ function render(){
 
       cell.appendChild(wrap);
 
-      const addBtn = document.createElement('div');
-      addBtn.className = 'add-btn';
-      addBtn.textContent = '+';
-      addBtn.title = 'Adicionar evento';
-      addBtn.onclick = () => openEditor(month, d, null);
-      cell.appendChild(addBtn);
+      if(hiddenCount <= 0){
+        const addBtn = document.createElement('div');
+        addBtn.className = 'add-btn';
+        addBtn.textContent = '+';
+        addBtn.title = 'Adicionar evento';
+        addBtn.onclick = () => openEditor(month, d, null);
+        cell.appendChild(addBtn);
+      }
 
       grid.appendChild(cell);
     }
