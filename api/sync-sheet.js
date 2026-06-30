@@ -171,6 +171,20 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // Se CRON_SECRET estiver configurado, só aceita chamadas do Vercel Cron
+  // (que envia esse header automaticamente) ou de dentro do próprio mural.
+  // Sem essa variável configurada, o endpoint fica aberto (como estava antes).
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = req.headers['authorization'] || '';
+    const isFromVercelCron = authHeader === `Bearer ${cronSecret}`;
+    const isFromMural = req.headers['x-mural-sync'] === cronSecret;
+    if (!isFromVercelCron && !isFromMural) {
+      res.status(401).json({ error: 'Não autorizado.' });
+      return;
+    }
+  }
+
   try {
     const csvText = await fetchSheetCSV();
     const rows = parseCSV(csvText);

@@ -532,6 +532,10 @@ const isConfigured = !SUPABASE_URL.includes('SUA_SUPABASE_URL_AQUI') && !SUPABAS
 const sb = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const TABLE = 'mural_events';
 const PENDING_TABLE = 'mural_pending_changes';
+// Só preencha isso se você configurou a variável CRON_SECRET na Vercel
+// e quer que o botão "Verificar mudanças da planilha" continue funcionando.
+// Deixe vazio ('') se não usar CRON_SECRET — o endpoint fica aberto, sem trava.
+const CRON_SECRET_CLIENT = '';
 
 const CAT_ORDER = ['influa','culto','vinte','lideranca','estudo','zadok','ferias','especial','feriado'];
 const CAT_LABEL = {
@@ -819,7 +823,9 @@ async function triggerSync(){
   btn.disabled = true;
   btn.textContent = '🔄 Verificando…';
   try{
-    const res = await fetch('/api/sync-sheet', { method:'POST' });
+    const headers = {};
+    if(CRON_SECRET_CLIENT) headers['x-mural-sync'] = CRON_SECRET_CLIENT;
+    const res = await fetch('/api/sync-sheet', { method:'POST', headers });
     const json = await res.json();
     if(!res.ok) throw new Error(json.error || 'Falha ao verificar a planilha');
     await loadPendingChanges();
