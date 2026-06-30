@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Murau: Calendário 2026 - Poiema BNU 💎</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
@@ -559,6 +560,44 @@
   .btn-reject{ background:#EFEDE6; color:#555; }
   .btn-reject:hover{ background:#E3E0D6; }
   .review-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; }
+
+  /* ============================================================
+     Responsivo (celular / telas estreitas)
+     ============================================================ */
+  @media (max-width: 640px){
+    body{ padding:16px 10px 40px; }
+
+    header.top h1{ font-size:22px; gap:8px; }
+    header.top h1 img{ height:0.9em; }
+    header.top p.sub{ font-size:12px; }
+
+    .toolbar button{ font-size:12px; padding:8px 11px; }
+    .save-status{ width:100%; margin-left:0; justify-content:flex-start; margin-top:4px; }
+
+    /* Um mês por linha, ocupando a largura toda — sem rolagem horizontal */
+    .board-grid{ grid-template-columns:1fr; gap:22px; }
+
+    /* Desliga a leve rotação "pinada na parede": em tela pequena
+       isso atrapalha mais do que ajuda na legibilidade */
+    .month-card:nth-child(odd),
+    .month-card:nth-child(even){ transform:none; }
+    .month-card:hover{ transform:none; }
+
+    .days-grid{ grid-auto-rows:64px; gap:2px; }
+    .day-cell{ padding:2px 2px 1px; }
+    .day-num{ font-size:9px; }
+    .event-chip{ font-size:8px; padding:1.5px 3px; }
+    .more-btn{ font-size:8px; }
+    .add-btn{ font-size:11px; }
+    .weekdays span{ font-size:9px; }
+
+    .editor-pop, .review-pop, .day-pop{ width:100%; }
+  }
+
+  @media (max-width: 380px){
+    .days-grid{ grid-auto-rows:58px; }
+    .event-chip{ font-size:7.5px; }
+  }
 </style>
 </head>
 <body>
