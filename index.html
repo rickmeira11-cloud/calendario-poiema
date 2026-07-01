@@ -135,7 +135,17 @@
     font-size:12.5px;
     color:#D8D5CC;
     white-space:nowrap;
+    cursor:pointer;
+    padding:3px 6px;
+    border-radius:6px;
+    transition:opacity .15s ease, background .15s ease;
   }
+  .legend-item:hover{ background:rgba(255,255,255,0.06); }
+  .legend-item-off{
+    opacity:0.35;
+    text-decoration:line-through;
+  }
+  .legend-item-off:hover{ opacity:0.55; }
   .legend-dot{ width:11px;height:11px;border-radius:3px;flex:none; }
 
   .upcoming-box{
@@ -1425,6 +1435,7 @@ function buildUpcomingList(limit = 8){
       const dateObj = new Date(CALENDAR_YEAR, month-1, d);
       const dayEvents = (data[month] && data[month][d]) || [];
       dayEvents.forEach((ev, idx) => {
+        if(!activeFilters.has(ev.c)) return;
         flat.push({ month, day:d, idx, dateObj, ev });
       });
     }
@@ -1468,11 +1479,71 @@ function renderUpcoming(){
   });
 }
 
+// ---------- Filtro de categorias (a legenda vira clicável) ----------
+const FILTER_STORAGE_KEY = 'poiema-mural-active-filters';
+let activeFilters = new Set(CAT_ORDER);
+loadFilterPreference();
+
+function loadFilterPreference(){
+  try{
+    const saved = localStorage.getItem(FILTER_STORAGE_KEY);
+    if(saved){
+      const arr = JSON.parse(saved);
+      if(Array.isArray(arr) && arr.length){
+        activeFilters = new Set(arr.filter(c => CAT_ORDER.includes(c)));
+      }
+    }
+  }catch(e){ /* localStorage indisponível — segue com tudo ativo */ }
+}
+
+function saveFilterPreference(){
+  try{
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify([...activeFilters]));
+  }catch(e){ /* silencioso — é só uma preferência de exibição */ }
+}
+
+function toggleFilter(cat){
+  if(activeFilters.has(cat)) activeFilters.delete(cat);
+  else activeFilters.add(cat);
+  saveFilterPreference();
+  renderLegend();
+  render();
+}
+
+function setAllFilters(showAll){
+  activeFilters = showAll ? new Set(CAT_ORDER) : new Set();
+  saveFilterPreference();
+  renderLegend();
+  render();
+}
+
 function renderLegend(){
   const el = document.getElementById('legend');
-  el.innerHTML = CAT_ORDER.map(c =>
-    `<div class="legend-item"><span class="legend-dot" style="background:var(--c-${c})"></span>${CAT_LABEL[c]}</div>`
-  ).join('');
+  el.innerHTML = '';
+
+  const bulkRow = document.createElement('div');
+  bulkRow.style.cssText = 'display:flex;gap:8px;width:100%;margin-bottom:4px;';
+  const allBtn = document.createElement('button');
+  allBtn.textContent = 'Mostrar todas';
+  allBtn.style.cssText = 'font-family:Inter,sans-serif;font-size:11px;font-weight:600;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;background:#3A3E45;color:#F3F1EA;';
+  allBtn.onclick = () => setAllFilters(true);
+  const noneBtn = document.createElement('button');
+  noneBtn.textContent = 'Ocultar todas';
+  noneBtn.style.cssText = allBtn.style.cssText;
+  noneBtn.onclick = () => setAllFilters(false);
+  bulkRow.appendChild(allBtn);
+  bulkRow.appendChild(noneBtn);
+  el.appendChild(bulkRow);
+
+  CAT_ORDER.forEach(c => {
+    const isActive = activeFilters.has(c);
+    const item = document.createElement('div');
+    item.className = 'legend-item' + (isActive ? '' : ' legend-item-off');
+    item.title = isActive ? 'Clique para ocultar esta categoria' : 'Clique para mostrar esta categoria';
+    item.innerHTML = `<span class="legend-dot" style="background:var(--c-${c})"></span>${CAT_LABEL[c]}`;
+    item.onclick = () => toggleFilter(c);
+    el.appendChild(item);
+  });
 }
 
 // ---------- Popover editor ----------
@@ -1703,14 +1774,24 @@ function render(){
 
       if(!data[month]) data[month] = {};
       if(!data[month][d]) data[month][d] = [];
-      const dayEvents = data[month][d];
+      const dayEventsAll = data[month][d];
+
+      // Mantém o índice original de cada evento (necessário pra editar/excluir
+      // o evento certo depois), só filtrando quais aparecem no card compacto.
+      const dayEventsVisible = dayEventsAll
+        .map((ev, idx) => ({ ev, idx }))
+        .filter(({ ev }) => activeFilters.has(ev.c));
+
       // No celular a célula é mais baixa, então cabe só 1 evento por linha
       // com folga — daí mostramos 1 e deixamos o "+N mais" cuidar do resto.
       const VISIBLE_LIMIT = window.innerWidth <= 640 ? 1 : 2;
-      const visibleEvents = dayEvents.slice(0, VISIBLE_LIMIT);
-      const hiddenCount = dayEvents.length - VISIBLE_LIMIT;
+      const shown = dayEventsVisible.slice(0, VISIBLE_LIMIT);
+      // Conta tanto o que passou do limite de espaço quanto o que está
+      // oculto por causa do filtro de categoria — nunca esconde de vez,
+      // sempre dá pra ver tudo clicando em "+N mais".
+      const extraCount = dayEventsAll.length - shown.length;
 
-      visibleEvents.forEach((ev, idx) => {
+      shown.forEach(({ ev, idx }) => {
         const chip = document.createElement('div');
         chip.className = 'event-chip';
         chip.style.background = `var(--c-${ev.c})`;
@@ -1720,10 +1801,10 @@ function render(){
         wrap.appendChild(chip);
       });
 
-      if(hiddenCount > 0){
+      if(extraCount > 0){
         const moreBtn = document.createElement('div');
         moreBtn.className = 'more-btn';
-        moreBtn.textContent = `+${hiddenCount} mais`;
+        moreBtn.textContent = `+${extraCount} mais`;
         moreBtn.title = 'Ver todos os eventos deste dia';
         moreBtn.onclick = () => openDayOverview(month, d);
         wrap.appendChild(moreBtn);
@@ -1731,7 +1812,7 @@ function render(){
 
       cell.appendChild(wrap);
 
-      if(hiddenCount <= 0){
+      if(extraCount <= 0){
         const addBtn = document.createElement('div');
         addBtn.className = 'add-btn';
         addBtn.textContent = '+';
