@@ -677,6 +677,11 @@ const CAT_LABEL = {
 };
 const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const MONTH_NAMES = {7:'Julho',8:'Agosto',9:'Setembro',10:'Outubro',11:'Novembro',12:'Dezembro'};
+// Ano do calendário — quando 2027 chegar, troque só este número.
+// (Vale lembrar: os textos "Julho a Dezembro" no cabeçalho e os
+// dados de exemplo em DEFAULT_DATA continuam sendo de 2026 e
+// precisam de atualização manual separada quando isso acontecer.)
+const CALENDAR_YEAR = 2026;
 
 // ---- Dados originais extraídos da planilha (Jul-Dez 2026), usados para semear/restaurar ----
 const DEFAULT_DATA = {
@@ -808,7 +813,7 @@ function emptyDataShape(){
   const obj = {};
   Object.keys(MONTH_NAMES).map(Number).forEach(m => {
     obj[m] = {};
-    const total = daysInMonth(m, 2026);
+    const total = daysInMonth(m, CALENDAR_YEAR);
     for(let d=1; d<=total; d++) obj[m][d] = [];
   });
   return obj;
@@ -1384,7 +1389,7 @@ function render(){
     const grid = document.createElement('div');
     grid.className = 'days-grid';
 
-    const year = 2026;
+    const year = CALENDAR_YEAR;
     const lead = firstWeekday(month, year);
     const total = daysInMonth(month, year);
 
