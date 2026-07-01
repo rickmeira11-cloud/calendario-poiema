@@ -561,6 +561,93 @@
   .btn-reject:hover{ background:#E3E0D6; }
   .review-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; }
 
+  /* ---- Painel "assinar calendário" ---- */
+  .sub-pop{
+    background:#fff;
+    border-radius:12px;
+    width:420px;
+    max-width:92vw;
+    padding:20px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.4);
+  }
+  .sub-pop h3{
+    margin:0 0 6px;
+    font-family:'Poppins',sans-serif;
+    font-size:16px;
+  }
+  .sub-pop p{
+    font-size:13px;
+    color:var(--ink-soft);
+    line-height:1.5;
+    margin:0 0 14px;
+  }
+  .sub-link-row{
+    display:flex;
+    gap:6px;
+    margin-bottom:16px;
+  }
+  .sub-link-row input{
+    flex:1;
+    border:1px solid #DDD8CC;
+    border-radius:8px;
+    padding:8px 10px;
+    font-family:'Inter',sans-serif;
+    font-size:12px;
+    color:var(--ink-soft);
+    background:#F8F6F0;
+  }
+  .sub-link-row button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:12px;
+    border:none;
+    border-radius:8px;
+    padding:8px 12px;
+    cursor:pointer;
+    background:#2B2A28;
+    color:#fff;
+    white-space:nowrap;
+  }
+  .sub-link-row button:hover{ background:#000; }
+  .sub-app-btn{
+    display:block;
+    width:100%;
+    text-align:left;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    border:1px solid #EAE6DA;
+    border-radius:8px;
+    padding:10px 12px;
+    margin-bottom:8px;
+    cursor:pointer;
+    background:#F8F6F0;
+    color:var(--ink);
+    text-decoration:none;
+  }
+  .sub-app-btn:hover{ background:#F0ECE0; }
+  .sub-app-btn small{
+    display:block;
+    font-weight:400;
+    color:var(--ink-soft);
+    font-size:11px;
+    margin-top:2px;
+  }
+  .sub-close{
+    width:100%;
+    margin-top:6px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    border:none;
+    border-radius:8px;
+    padding:9px 0;
+    cursor:pointer;
+    background:#EFEDE6;
+    color:#555;
+  }
+  .sub-close:hover{ background:#E3E0D6; }
+
   /* ============================================================
      Responsivo (celular / telas estreitas)
      ============================================================ */
@@ -599,7 +686,7 @@
     .add-btn{ font-size:11px; }
     .weekdays span{ font-size:9px; }
 
-    .editor-pop, .review-pop, .day-pop{ width:100%; }
+    .editor-pop, .review-pop, .day-pop, .sub-pop{ width:100%; }
   }
 
   @media (max-width: 380px){
@@ -618,6 +705,7 @@
     <button id="syncBtn" type="button">🔄 Verificar mudanças da planilha</button>
     <button id="pendingBtn" type="button" style="display:none; position:relative;">🔔 <span id="pendingCount">0</span> mudança(s) pendente(s)</button>
     <button id="restoreAll" type="button" class="danger">↺ Restaurar tudo (dados originais)</button>
+    <button id="subscribeBtn" type="button">📅 Assinar no meu calendário</button>
     <button id="exportBtn" type="button">⬇️ Exportar backup (.json)</button>
     <button id="importBtn" type="button">⬆️ Importar backup</button>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
@@ -1178,6 +1266,72 @@ function importBackup(file){
   reader.readAsText(file);
 }
 
+// ---------- Painel "assinar no meu calendário" ----------
+function openSubscribePanel(){
+  const icsUrl = `${window.location.origin}/api/calendar.ics`;
+  const webcalUrl = icsUrl.replace(/^https?:\/\//, 'webcal://');
+  const googleUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcalUrl)}`;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'editor-overlay';
+
+  const pop = document.createElement('div');
+  pop.className = 'sub-pop';
+
+  pop.innerHTML = `
+    <h3>📅 Assinar o mural no seu calendário</h3>
+    <p>Assine uma vez e os eventos aparecem automaticamente na sua agenda pessoal, sempre atualizados — sem precisar voltar aqui.</p>
+  `;
+
+  const linkRow = document.createElement('div');
+  linkRow.className = 'sub-link-row';
+  const linkInput = document.createElement('input');
+  linkInput.type = 'text';
+  linkInput.readOnly = true;
+  linkInput.value = icsUrl;
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Copiar link';
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(icsUrl).then(() => {
+      copyBtn.textContent = 'Copiado ✓';
+      setTimeout(() => { copyBtn.textContent = 'Copiar link'; }, 1800);
+    });
+  };
+  linkRow.appendChild(linkInput);
+  linkRow.appendChild(copyBtn);
+  pop.appendChild(linkRow);
+
+  const googleBtn = document.createElement('a');
+  googleBtn.className = 'sub-app-btn';
+  googleBtn.href = googleUrl;
+  googleBtn.target = '_blank';
+  googleBtn.rel = 'noopener';
+  googleBtn.innerHTML = 'Adicionar ao Google Agenda<small>Abre o Google Agenda direto, já com o calendário pronto pra confirmar</small>';
+  pop.appendChild(googleBtn);
+
+  const appleBtn = document.createElement('a');
+  appleBtn.className = 'sub-app-btn';
+  appleBtn.href = webcalUrl;
+  appleBtn.innerHTML = 'Adicionar ao Apple Calendar / iPhone<small>Abre o app Calendário automaticamente (funciona melhor no Safari)</small>';
+  pop.appendChild(appleBtn);
+
+  const manualBtn = document.createElement('div');
+  manualBtn.className = 'sub-app-btn';
+  manualBtn.style.cursor = 'default';
+  manualBtn.innerHTML = 'Outlook ou outro app<small>Copie o link acima e procure por "Adicionar calendário → Assinar da web/URL" nas configurações do seu app</small>';
+  pop.appendChild(manualBtn);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'sub-close';
+  closeBtn.textContent = 'Fechar';
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  pop.appendChild(closeBtn);
+
+  overlay.appendChild(pop);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) document.body.removeChild(overlay); });
+  document.body.appendChild(overlay);
+}
+
 function renderLegend(){
   const el = document.getElementById('legend');
   el.innerHTML = CAT_ORDER.map(c =>
@@ -1458,6 +1612,7 @@ function render(){
   });
 }
 
+document.getElementById('subscribeBtn').onclick = openSubscribePanel;
 document.getElementById('exportBtn').onclick = exportBackup;
 document.getElementById('syncBtn').onclick = triggerSync;
 document.getElementById('pendingBtn').onclick = openReviewPanel;
@@ -1477,7 +1632,7 @@ document.getElementById('restoreAll').onclick = () => {
 };
 
 document.getElementById('addLegendInfo').onclick = () => {
-  alert('Como usar este mural:\n\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use os botões "restaurar" se quiser voltar aos dados originais da planilha (isso afeta todo mundo).');
+  alert('Como usar este mural:\n\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\n📅 Clique em "Assinar no meu calendário" para que os eventos apareçam automaticamente no seu Google Agenda, Apple Calendar ou Outlook — sempre atualizados, sem precisar voltar aqui.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use os botões "restaurar" se quiser voltar aos dados originais da planilha (isso afeta todo mundo).');
 };
 
 // ---------- Inicialização ----------
