@@ -736,6 +736,38 @@
   }
   .sub-close:hover{ background:#E3E0D6; }
 
+  .share-textarea{
+    width:100%;
+    min-height:220px;
+    border:1px solid #DDD8CC;
+    border-radius:8px;
+    padding:10px;
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    line-height:1.5;
+    resize:vertical;
+    margin-bottom:12px;
+    color:var(--ink);
+  }
+  .share-actions{
+    display:flex;
+    gap:8px;
+  }
+  .share-actions button{
+    flex:1;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    border:none;
+    border-radius:8px;
+    padding:10px 0;
+    cursor:pointer;
+  }
+  .share-whatsapp{ background:#25D366; color:#fff; }
+  .share-whatsapp:hover{ background:#1FBE5A; }
+  .share-copy{ background:#EFEDE6; color:#555; }
+  .share-copy:hover{ background:#E3E0D6; }
+
   /* ============================================================
      Responsivo (celular / telas estreitas)
      ============================================================ */
@@ -800,6 +832,7 @@
     <button id="restoreAll" type="button" class="danger">↺ Restaurar tudo (dados originais)</button>
     <button id="subscribeBtn" type="button">📅 Assinar no meu calendário</button>
     <button id="activityLogBtn" type="button">📋 Histórico</button>
+    <button id="shareWeekBtn" type="button">📤 Compartilhar semana</button>
     <button id="exportBtn" type="button">⬇️ Exportar backup (.json)</button>
     <button id="importBtn" type="button">⬆️ Importar backup</button>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
@@ -1661,6 +1694,117 @@ async function openActivityLog(){
   }
 }
 
+// ---------- Compartilhar semana no WhatsApp ----------
+const CAT_EMOJI = {
+  influa:'🟢', culto:'🟡', vinte:'🟠', lideranca:'🟣', estudo:'🔵',
+  zadok:'🩷', ferias:'🔴', especial:'🟪', feriado:'⚪'
+};
+
+function getCurrentWeekRange(){
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dow = today.getDay(); // 0 = domingo
+  const start = new Date(today); start.setDate(today.getDate() - dow);
+  const end = new Date(start); end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+
+function buildWeekMessage(){
+  const { start, end } = getCurrentWeekRange();
+  const flat = [];
+
+  Object.keys(MONTH_NAMES).map(Number).forEach(month => {
+    const total = daysInMonth(month, CALENDAR_YEAR);
+    for(let d=1; d<=total; d++){
+      const dateObj = new Date(CALENDAR_YEAR, month-1, d);
+      if(dateObj < start || dateObj > end) continue;
+      const dayEvents = (data[month] && data[month][d]) || [];
+      dayEvents.forEach(ev => {
+        if(!activeFilters.has(ev.c)) return; // respeita o filtro de categorias ativo
+        flat.push({ month, day:d, dateObj, ev });
+      });
+    }
+  });
+
+  flat.sort((a,b) => a.dateObj - b.dateObj);
+
+  const fmt = (d) => `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}`;
+  let msg = `📅 *Agenda desta semana — Poiema BNU*\n_${fmt(start)} a ${fmt(end)}_\n\n`;
+
+  if(flat.length === 0){
+    msg += '_Nenhum evento nesta semana._\n\n';
+  } else {
+    let lastKey = null;
+    flat.forEach(item => {
+      const key = `${item.month}-${item.day}`;
+      if(key !== lastKey){
+        const wd = WEEKDAYS[item.dateObj.getDay()];
+        msg += `\n*${wd}, ${pad2(item.day)}/${pad2(item.month)}*\n`;
+        lastKey = key;
+      }
+      const emoji = CAT_EMOJI[item.ev.c] || '•';
+      const hourPart = item.ev.h ? ` — ${item.ev.h}` : '';
+      msg += `${emoji} ${item.ev.t}${hourPart}\n`;
+    });
+    msg += '\n';
+  }
+
+  msg += `_Mural completo:_ ${window.location.origin}`;
+  return msg;
+}
+
+function openShareWeekPanel(){
+  const overlay = document.createElement('div');
+  overlay.className = 'editor-overlay';
+
+  const pop = document.createElement('div');
+  pop.className = 'sub-pop';
+  pop.innerHTML = `
+    <h3>📤 Compartilhar semana</h3>
+    <p>Confira e ajuste o texto se quiser antes de enviar. A formatação com * e _ vira negrito/itálico automaticamente no WhatsApp.</p>
+  `;
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'share-textarea';
+  textarea.value = buildWeekMessage();
+  pop.appendChild(textarea);
+
+  const actions = document.createElement('div');
+  actions.className = 'share-actions';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'share-copy';
+  copyBtn.textContent = 'Copiar texto';
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(textarea.value).then(() => {
+      copyBtn.textContent = 'Copiado ✓';
+      setTimeout(() => { copyBtn.textContent = 'Copiar texto'; }, 1800);
+    });
+  };
+
+  const waBtn = document.createElement('button');
+  waBtn.className = 'share-whatsapp';
+  waBtn.textContent = 'Abrir no WhatsApp';
+  waBtn.onclick = () => {
+    const url = `https://wa.me/?text=${encodeURIComponent(textarea.value)}`;
+    window.open(url, '_blank');
+  };
+
+  actions.appendChild(copyBtn);
+  actions.appendChild(waBtn);
+  pop.appendChild(actions);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'sub-close';
+  closeBtn.textContent = 'Fechar';
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  pop.appendChild(closeBtn);
+
+  overlay.appendChild(pop);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) document.body.removeChild(overlay); });
+  document.body.appendChild(overlay);
+}
+
 function renderLegend(){
   const el = document.getElementById('legend');
   el.innerHTML = '';
@@ -1980,6 +2124,7 @@ function render(){
 
 document.getElementById('subscribeBtn').onclick = openSubscribePanel;
 document.getElementById('activityLogBtn').onclick = openActivityLog;
+document.getElementById('shareWeekBtn').onclick = openShareWeekPanel;
 document.getElementById('changeAuthorLink').onclick = (e) => { e.preventDefault(); askAuthorName(); };
 updateAuthorLabel();
 document.getElementById('exportBtn').onclick = exportBackup;
