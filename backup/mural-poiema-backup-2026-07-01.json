@@ -1,0 +1,1006 @@
+{
+  "7": {
+    "1": [
+      {
+        "id": "18c03147-26b8-4035-b385-d7ac542e0f53",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "2": [],
+    "3": [],
+    "4": [
+      {
+        "id": "57c21e7b-d87b-4e05-8f80-a57312c2716c",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "5": [
+      {
+        "id": "4caeef96-40a9-4383-935e-edabf4e6e266",
+        "t": "Curso de Noivos",
+        "c": "especial",
+        "h": "13h30"
+      },
+      {
+        "id": "001c5011-91bc-40dd-882f-c7927b1eacea",
+        "t": "Culto (horário especial)",
+        "c": "culto",
+        "h": "10h"
+      }
+    ],
+    "6": [],
+    "7": [
+      {
+        "id": "6e68d71b-a3f5-4ade-bfe9-dc2fafc9a683",
+        "t": "Reunião Liderança ministérios",
+        "c": "lideranca",
+        "h": ""
+      }
+    ],
+    "8": [
+      {
+        "id": "2aa7cfd3-2ab7-4917-9803-840568bd3242",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "9": [],
+    "10": [],
+    "11": [
+      {
+        "id": "a9feb358-0756-49e0-aa4e-9a2766aed9c3",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      },
+      {
+        "id": "909d240e-7ab5-4627-9f2c-c962f7e91b5e",
+        "t": "Confra GAS",
+        "c": "zadok",
+        "h": ""
+      }
+    ],
+    "12": [
+      {
+        "id": "7069e590-a9e9-4965-8b14-ba6cc616930e",
+        "t": "Curso de Noivos",
+        "c": "especial",
+        "h": "13h30"
+      },
+      {
+        "id": "0249ce0a-81b8-47b4-97a1-52d3e05c6e7a",
+        "t": "Culto Ceia",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "13": [],
+    "14": [
+      {
+        "id": "140df1e6-6a77-45fa-b9b3-7d7cc7b1b444",
+        "t": "Leadersheep",
+        "c": "lideranca",
+        "h": "20h (presencial)"
+      }
+    ],
+    "15": [
+      {
+        "id": "f4c71cda-2d2d-4315-a3d8-6392e23162c0",
+        "t": "FÉRIAS 2OU+",
+        "c": "ferias",
+        "h": ""
+      }
+    ],
+    "16": [
+      {
+        "id": "4b2d3b34-f633-4a62-9477-d9208e011170",
+        "t": "Estudo Bíblico para mulheres",
+        "c": "estudo",
+        "h": "20h (online)"
+      }
+    ],
+    "17": [],
+    "18": [
+      {
+        "id": "5048692d-495d-4d6f-9f06-0b2bc7539291",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "19": [
+      {
+        "id": "f826126e-9e78-4909-b406-2d480c16c71d",
+        "t": "Curso de Noivos",
+        "c": "especial",
+        "h": "13h30"
+      },
+      {
+        "id": "c08b7d37-6866-440f-b431-38b6c81428d8",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "20": [],
+    "21": [],
+    "22": [
+      {
+        "id": "33888d50-26f2-484d-a09f-5d8465b890c8",
+        "t": "FÉRIAS 2OU+",
+        "c": "ferias",
+        "h": ""
+      }
+    ],
+    "23": [],
+    "24": [],
+    "25": [
+      {
+        "id": "1194c2b1-1b1a-4554-b33a-568fbba3c32e",
+        "t": "WORKSHOP INFLUA MASC",
+        "c": "influa",
+        "h": "9h às 12h"
+      },
+      {
+        "id": "9fa9131c-ecbb-4926-98a8-9e70fb875591",
+        "t": "WORKSHOP INFLUA FEM",
+        "c": "influa",
+        "h": "14h às 17h30"
+      }
+    ],
+    "26": [
+      {
+        "id": "7bc7c1ea-a582-4d4b-a0e6-5a2c6f04d5d4",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "27": [],
+    "28": [],
+    "29": [
+      {
+        "id": "9abcb928-9f33-41e4-9ae6-3a2483342b0f",
+        "t": "FÉRIAS 2OU+",
+        "c": "ferias",
+        "h": ""
+      }
+    ],
+    "30": [],
+    "31": [
+      {
+        "id": "8e976691-cad5-49d8-9701-0846a5677edc",
+        "t": "Zadok Local",
+        "c": "zadok",
+        "h": "19h"
+      }
+    ]
+  },
+  "8": {
+    "1": [
+      {
+        "id": "ad3a9e9b-3e9b-4970-8954-4b136ea8526e",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "2": [
+      {
+        "id": "437d2fa9-c681-4af3-ac89-15468476fcec",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "3": [],
+    "4": [
+      {
+        "id": "ca732bd2-50d5-4878-a9f4-89977da2df6d",
+        "t": "Leadersheep",
+        "c": "lideranca",
+        "h": "20h (presencial)"
+      }
+    ],
+    "5": [
+      {
+        "id": "47acfbf2-ce46-4b05-b732-4eaa702351e1",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "6": [],
+    "7": [],
+    "8": [
+      {
+        "id": "bac3ff3b-c1e5-417b-abae-d6db01f2d222",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      },
+      {
+        "id": "0a8f29d8-ba7a-4c18-8d12-d98eb2c63b68",
+        "t": "Culto Influa (PAIS&FILHOS)",
+        "c": "influa",
+        "h": "19h"
+      }
+    ],
+    "9": [
+      {
+        "id": "ce489085-e50e-439c-b734-12fa1fd876ab",
+        "t": "Culto Pais e Ceia",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "10": [],
+    "11": [
+      {
+        "id": "d513d09b-e1a1-453b-951c-a2206f19aca1",
+        "t": "Reunião Liderança ministérios",
+        "c": "lideranca",
+        "h": ""
+      }
+    ],
+    "12": [
+      {
+        "id": "068fe340-8437-4cbb-982e-36954511a5a3",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "13": [],
+    "14": [],
+    "15": [
+      {
+        "id": "2f959033-0b4e-4dc3-946b-1aa86be2eed1",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "16": [
+      {
+        "id": "959819aa-6ef9-475b-9cb8-e6c35af93831",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "17": [],
+    "18": [],
+    "19": [
+      {
+        "id": "13e47d41-4e92-4cca-bacf-5c1a4a1678cf",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": ""
+      }
+    ],
+    "20": [
+      {
+        "id": "94786961-b097-451c-b19f-43f98ee3402b",
+        "t": "Estudo Bíblico para mulheres",
+        "c": "estudo",
+        "h": "20h (online)"
+      }
+    ],
+    "21": [],
+    "22": [],
+    "23": [
+      {
+        "id": "688d8568-5c41-41bf-9bec-9efe79fd9af4",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "24": [],
+    "25": [],
+    "26": [
+      {
+        "id": "86210c16-c929-4650-ac1a-be123703e75b",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "27": [],
+    "28": [
+      {
+        "id": "8196211d-a499-4eac-a028-6886234c7ad7",
+        "t": "Zadok Local",
+        "c": "zadok",
+        "h": "19h"
+      }
+    ],
+    "29": [
+      {
+        "id": "713e8b2a-15d6-4312-9080-0ae5b729727e",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      },
+      {
+        "id": "6911c3f3-6f3e-4f20-b085-adc4a9f8c074",
+        "t": "Culto Influa",
+        "c": "influa",
+        "h": "19h"
+      }
+    ],
+    "30": [
+      {
+        "id": "9c9d4605-2c47-4975-9ca7-2c6a678954c4",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "31": []
+  },
+  "9": {
+    "1": [
+      {
+        "id": "f1b9d852-27d0-43ed-b609-2ab0455fc59a",
+        "t": "Reunião Liderança ministérios",
+        "c": "lideranca",
+        "h": ""
+      }
+    ],
+    "2": [
+      {
+        "id": "f2b663f5-f87f-4f51-9e89-80f0c68b3416",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "3": [],
+    "4": [],
+    "5": [
+      {
+        "id": "1769e909-278c-495f-b2d8-0c1fc8442e12",
+        "t": "Welcome Coffee",
+        "c": "especial",
+        "h": ""
+      },
+      {
+        "id": "5bcd7917-0d81-4796-960f-0748e2d639d4",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "6": [
+      {
+        "id": "8aca8bec-fb15-414c-b7a1-768e55bfb751",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      },
+      {
+        "id": "957272a1-f339-4bef-a2b8-487d30d0b3d4",
+        "t": "Batismo (bate papo as 16h e batismo no culto)",
+        "c": "culto",
+        "h": "16h"
+      }
+    ],
+    "7": [
+      {
+        "id": "78fd11e6-7e66-488a-b8f4-b1fa37284a19",
+        "t": "Feriado",
+        "c": "feriado",
+        "h": ""
+      }
+    ],
+    "8": [],
+    "9": [
+      {
+        "id": "eeb83fcc-5e08-4835-998b-67e94e1470e6",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "10": [],
+    "11": [],
+    "12": [
+      {
+        "id": "ebf1604b-6f64-479f-8097-8d7dc214f436",
+        "t": "Poiemake BNU",
+        "c": "especial",
+        "h": "15h"
+      },
+      {
+        "id": "0175c5e7-484a-4fb8-8675-0eebd32b6d5e",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "13": [
+      {
+        "id": "8ce10cb5-4b03-4ee1-b26f-2c5a9dc24a50",
+        "t": "Culto Ceia",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "14": [],
+    "15": [
+      {
+        "id": "f5c3fe7b-6623-4c9b-b27b-8811edfaaef7",
+        "t": "Leadersheep",
+        "c": "lideranca",
+        "h": "20h (presencial)"
+      }
+    ],
+    "16": [
+      {
+        "id": "21d217d3-a2d5-49e3-afac-aafbe5498364",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "17": [],
+    "18": [
+      {
+        "id": "6f1f324e-1ab2-489b-84f7-de1bcac0ddd2",
+        "t": "Zadok Local",
+        "c": "zadok",
+        "h": "19h"
+      }
+    ],
+    "19": [
+      {
+        "id": "58bf96b1-1751-4609-b8a3-90d068664ebc",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      },
+      {
+        "id": "b6043898-f693-4625-904f-9e1d155a7f79",
+        "t": "Culto Influa",
+        "c": "influa",
+        "h": "19h"
+      }
+    ],
+    "20": [
+      {
+        "id": "7439d004-8241-4796-8ad1-c35a7b03ebfc",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "21": [],
+    "22": [],
+    "23": [
+      {
+        "id": "cdd454f8-c3dd-4788-a4ea-8aa053c21a63",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "24": [
+      {
+        "id": "48041b40-98d5-43a7-b3ff-5993c65123b5",
+        "t": "Estudo Bíblico para mulheres",
+        "c": "estudo",
+        "h": "20h (online)"
+      }
+    ],
+    "25": [
+      {
+        "id": "504b47d5-22e4-41ee-8b7e-43d748e0ac56",
+        "t": "Poieman BNU TBO (definir se acampa ou se interno na igreja)",
+        "c": "especial",
+        "h": ""
+      }
+    ],
+    "26": [
+      {
+        "id": "1622cde1-cedb-454a-ba29-4d71a06ecdf6",
+        "t": "Poieman BNU TBO (definir se acampa ou se interno na igreja)",
+        "c": "especial",
+        "h": ""
+      },
+      {
+        "id": "7a690e6b-3a3e-4959-b9b1-f4706a6f6760",
+        "t": "2ou+ Influa e Jovens Casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "27": [
+      {
+        "id": "21d8bd01-3a32-4ee7-a459-200acc8782e0",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "28": [],
+    "29": [],
+    "30": [
+      {
+        "id": "ddbf911d-c9b4-42ff-a6a5-9e19688628ea",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ]
+  },
+  "10": {
+    "1": [],
+    "2": [],
+    "3": [
+      {
+        "id": "d19981a3-6b23-436e-80e8-e79f0553a382",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      },
+      {
+        "id": "fc82e7f4-7519-4689-9dc2-aad7e52c532f",
+        "t": "Culto Influa",
+        "c": "influa",
+        "h": "19h"
+      }
+    ],
+    "4": [
+      {
+        "id": "0ed0f45f-8df8-4c5a-a643-0d0d33bf5116",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "5": [],
+    "6": [
+      {
+        "id": "0fc8f851-d5e7-450a-bfa0-ec596b2a5b4d",
+        "t": "Reunião Liderança ministérios",
+        "c": "lideranca",
+        "h": ""
+      }
+    ],
+    "7": [
+      {
+        "id": "29948a53-c7ea-49f9-af0e-cea30d3f0792",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "8": [],
+    "9": [],
+    "10": [
+      {
+        "id": "506198d9-4b93-44e4-b920-ad2ff5d4265b",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "11": [
+      {
+        "id": "a9d1dcdb-6feb-4098-b7fe-e4df9040c6a7",
+        "t": "Culto Ceia",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "12": [],
+    "13": [
+      {
+        "id": "2383d763-5f8c-40f4-98de-ae3f2a231038",
+        "t": "Leadersheep",
+        "c": "lideranca",
+        "h": "20h (presencial)"
+      }
+    ],
+    "14": [
+      {
+        "id": "a837ff5c-4bd5-44a7-8a67-8c921c7d60f6",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "15": [],
+    "16": [],
+    "17": [
+      {
+        "id": "6feadb8e-9b34-4842-8258-5ce7b0da0ec8",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      },
+      {
+        "id": "248671e8-3503-4295-ae7a-7ccc44524a7e",
+        "t": "Culto Influa",
+        "c": "influa",
+        "h": "19h"
+      }
+    ],
+    "18": [
+      {
+        "id": "fddf8ff1-d3d4-4690-9d78-97eeb1283cd7",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "19": [],
+    "20": [],
+    "21": [
+      {
+        "id": "c976a52d-81b9-4b24-9099-728aaf8a5365",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "22": [
+      {
+        "id": "a82bf942-dc0e-4b9d-8506-c844f9a31a3d",
+        "t": "Estudo Bíblico para mulheres",
+        "c": "estudo",
+        "h": "20h (online)"
+      }
+    ],
+    "23": [
+      {
+        "id": "90f668a6-f28b-40ea-bdd5-3e876d9974f6",
+        "t": "Zadok Local",
+        "c": "zadok",
+        "h": "19h"
+      }
+    ],
+    "24": [
+      {
+        "id": "b48b7b6e-ecf7-4b25-9cdf-96e88fdba88b",
+        "t": "Power Kids",
+        "c": "especial",
+        "h": "13h às 16h30"
+      },
+      {
+        "id": "bcefc6a2-29de-4fea-b8b8-1f08afe93a4d",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "25": [
+      {
+        "id": "a421ced5-5191-46c3-bb14-fc7f19aa7d38",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "26": [],
+    "27": [],
+    "28": [
+      {
+        "id": "750b5a42-fdef-4e3d-b306-b3d46493c6f3",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "29": [],
+    "30": [],
+    "31": [
+      {
+        "id": "91f195ba-fca2-40a6-8e25-85729a9fc639",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ]
+  },
+  "11": {
+    "1": [
+      {
+        "id": "4ce7c2f8-7c81-47f9-ba21-0dbb5bb30c11",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "2": [],
+    "3": [
+      {
+        "id": "efed74c8-203c-45bd-a989-efb5a2e40d6f",
+        "t": "Reunião Liderança ministérios",
+        "c": "lideranca",
+        "h": ""
+      }
+    ],
+    "4": [
+      {
+        "id": "0489b384-12e2-4a59-b029-b861c39a4b7e",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "5": [],
+    "6": [],
+    "7": [
+      {
+        "id": "ce310dd7-9da9-40bb-a3aa-99be5dbc7556",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      },
+      {
+        "id": "ed7d15f7-5dea-46ca-830a-ddeed143ae31",
+        "t": "Culto Influa",
+        "c": "influa",
+        "h": "19h"
+      }
+    ],
+    "8": [
+      {
+        "id": "acfc5ce1-362f-4cd8-a277-a006b4e020c4",
+        "t": "Culto Ceia",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "9": [],
+    "10": [
+      {
+        "id": "22f08ecb-d04b-4539-84d8-8b13a14dd1bb",
+        "t": "Leadersheep",
+        "c": "lideranca",
+        "h": "20h (presencial)"
+      }
+    ],
+    "11": [
+      {
+        "id": "be4950da-2942-46dd-ab17-5543b7fa7ddf",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "12": [],
+    "13": [
+      {
+        "id": "26cce80d-46fe-46b2-8177-f02803e4cca8",
+        "t": "Conferencia Taubaté (a confirmar)",
+        "c": "especial",
+        "h": ""
+      }
+    ],
+    "14": [
+      {
+        "id": "2dd4ad9e-2d5f-4fdd-abbe-3ef89443d921",
+        "t": "Conferencia Taubaté (a confirmar)",
+        "c": "especial",
+        "h": ""
+      }
+    ],
+    "15": [
+      {
+        "id": "3a1c9a5a-20e8-4c42-b869-cbbc8eb9984e",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "16": [],
+    "17": [],
+    "18": [
+      {
+        "id": "1616d4cc-1f07-449a-96fb-20170550ae35",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "19": [],
+    "20": [],
+    "21": [
+      {
+        "id": "95b09b0d-e336-4ac6-988c-9d0aeaf6be89",
+        "t": "2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      },
+      {
+        "id": "3aaa4099-3453-4936-90f0-e1335f63f9f0",
+        "t": "Culto Influa",
+        "c": "influa",
+        "h": "19h"
+      }
+    ],
+    "22": [
+      {
+        "id": "24a13bc3-1eb3-4fee-827b-04748a83d8d7",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "23": [],
+    "24": [],
+    "25": [
+      {
+        "id": "c875f5d8-a82d-4479-a28b-c3c5cff3448e",
+        "t": "Encerramento 2OU+",
+        "c": "especial",
+        "h": ""
+      },
+      {
+        "id": "2be974e9-84e9-4f10-86c3-b81d22f4bb1f",
+        "t": "2OU+",
+        "c": "vinte",
+        "h": "20h"
+      }
+    ],
+    "26": [
+      {
+        "id": "5109c134-8be3-49b3-9c87-2522b3bf8847",
+        "t": "Estudo Bíblico para mulheres",
+        "c": "estudo",
+        "h": "20h (online)"
+      }
+    ],
+    "27": [
+      {
+        "id": "63098ac5-a7ff-4c0c-a86d-6244f7b404b8",
+        "t": "Zadok Local",
+        "c": "zadok",
+        "h": "19h"
+      }
+    ],
+    "28": [
+      {
+        "id": "da6e79d2-8e2c-4230-a347-abe3db74f3ea",
+        "t": "Encerramento 2ou+ Influa e Jovens casais",
+        "c": "influa",
+        "h": "17h"
+      }
+    ],
+    "29": [
+      {
+        "id": "ad0d7f9e-3e2a-45d9-95d3-563a992b811c",
+        "t": "Culto | Super Seed",
+        "c": "especial",
+        "h": "18h"
+      }
+    ],
+    "30": []
+  },
+  "12": {
+    "1": [],
+    "2": [
+      {
+        "id": "9a12d7db-9cf8-4a08-8af2-648aa1df9478",
+        "t": "FÉRIAS 2OU+",
+        "c": "ferias",
+        "h": ""
+      }
+    ],
+    "3": [],
+    "4": [
+      {
+        "id": "53d20957-0791-4126-b112-6ca63faf14ec",
+        "t": "Zadok local SC (especial)",
+        "c": "especial",
+        "h": ""
+      }
+    ],
+    "5": [
+      {
+        "id": "a7e34202-8356-4d40-a154-15294b6a9d85",
+        "t": "Zadok local SC (especial)",
+        "c": "especial",
+        "h": ""
+      }
+    ],
+    "6": [
+      {
+        "id": "e4f59baf-75ec-4382-9de5-dcc7f6424b4f",
+        "t": "Culto Ceia",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "7": [],
+    "8": [],
+    "9": [
+      {
+        "id": "79ab9570-b394-4c13-b751-c8ee523db883",
+        "t": "FÉRIAS 2OU+",
+        "c": "ferias",
+        "h": ""
+      }
+    ],
+    "10": [],
+    "11": [],
+    "12": [
+      {
+        "id": "0703f842-1dfd-44d1-b63b-cdda32405127",
+        "t": "Culto Influa",
+        "c": "influa",
+        "h": "19h"
+      }
+    ],
+    "13": [
+      {
+        "id": "d9844cec-11cc-4cc2-80d0-ad66d5695be7",
+        "t": "Culto Natal",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "14": [],
+    "15": [],
+    "16": [
+      {
+        "id": "0ac879d1-1b13-4ad6-8d16-0e8c3560ca7f",
+        "t": "FÉRIAS 2OU+",
+        "c": "ferias",
+        "h": ""
+      }
+    ],
+    "17": [],
+    "18": [],
+    "19": [],
+    "20": [
+      {
+        "id": "1de50b55-b0c9-4854-a497-ca3aeb375630",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "21": [],
+    "22": [],
+    "23": [
+      {
+        "id": "29f4092c-8738-47f3-a13d-9009ed339cb0",
+        "t": "FÉRIAS 2OU+",
+        "c": "ferias",
+        "h": ""
+      }
+    ],
+    "24": [],
+    "25": [],
+    "26": [],
+    "27": [
+      {
+        "id": "87927dbc-f658-4583-b6d7-ca7910db9ee3",
+        "t": "Culto",
+        "c": "culto",
+        "h": "18h"
+      }
+    ],
+    "28": [],
+    "29": [],
+    "30": [
+      {
+        "id": "c75933ad-60e5-4bd0-bbbf-4206d8f955b9",
+        "t": "FÉRIAS 2OU+",
+        "c": "ferias",
+        "h": ""
+      }
+    ],
+    "31": []
+  }
+}

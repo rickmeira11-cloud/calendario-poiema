@@ -138,6 +138,76 @@
   }
   .legend-dot{ width:11px;height:11px;border-radius:3px;flex:none; }
 
+  .upcoming-box{
+    max-width:1480px;
+    margin:0 auto 26px;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px;
+    padding:14px 16px 16px;
+  }
+  .upcoming-title{
+    font-family:'Poppins',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    color:#F3F1EA;
+    margin-bottom:10px;
+  }
+  .upcoming-list{
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    padding-bottom:4px;
+  }
+  .upcoming-item{
+    flex:none;
+    width:150px;
+    background:var(--paper);
+    border-radius:8px;
+    padding:10px 12px;
+    cursor:pointer;
+  }
+  .upcoming-item:hover{ filter:brightness(0.96); }
+  .upcoming-date{
+    font-size:10.5px;
+    font-weight:700;
+    color:#4A4844;
+    margin-bottom:5px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .upcoming-today-badge{
+    background:#2B2A28;
+    color:#fff;
+    font-size:9px;
+    font-weight:700;
+    padding:1px 5px;
+    border-radius:4px;
+  }
+  .upcoming-text{
+    font-size:12px;
+    font-weight:600;
+    line-height:1.3;
+    color:#2B2A28;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .upcoming-hour{
+    font-size:10.5px;
+    color:#4A4844;
+    margin-top:4px;
+    font-weight:600;
+  }
+  .upcoming-empty{
+    color:#B9B6AC;
+    font-size:12.5px;
+    padding:4px 0;
+  }
+
   .banner{
     max-width:1480px;
     margin:0 auto 14px;
@@ -661,6 +731,11 @@
     .toolbar button{ font-size:12px; padding:8px 11px; }
     .save-status{ width:100%; margin-left:0; justify-content:flex-start; margin-top:4px; }
 
+    .upcoming-item{ width:128px; padding:8px 10px; }
+    .upcoming-text{ font-size:11px; }
+    .upcoming-date{ font-size:9.5px; }
+    .upcoming-hour{ font-size:9.5px; }
+
     /* Um mês por linha, ocupando a largura toda — sem rolagem horizontal */
     .board-grid{ grid-template-columns:1fr; gap:22px; }
 
@@ -723,6 +798,10 @@
     📭 Esta tabela ainda está vazia. <button id="seedBtn" type="button">Carregar dados originais da planilha</button>
   </div>
   <div class="legend" id="legend"></div>
+  <div class="upcoming-box">
+    <div class="upcoming-title">🔜 Próximos eventos</div>
+    <div class="upcoming-list" id="upcomingList"></div>
+  </div>
 </header>
 
 <div class="board-grid" id="board"></div>
@@ -1332,6 +1411,63 @@ function openSubscribePanel(){
   document.body.appendChild(overlay);
 }
 
+// ---------- Bloco "próximos eventos" ----------
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function buildUpcomingList(limit = 8){
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const flat = [];
+  Object.keys(MONTH_NAMES).map(Number).forEach(month => {
+    const total = daysInMonth(month, CALENDAR_YEAR);
+    for(let d=1; d<=total; d++){
+      const dateObj = new Date(CALENDAR_YEAR, month-1, d);
+      const dayEvents = (data[month] && data[month][d]) || [];
+      dayEvents.forEach((ev, idx) => {
+        flat.push({ month, day:d, idx, dateObj, ev });
+      });
+    }
+  });
+
+  const upcoming = flat
+    .filter(item => item.dateObj.getTime() >= todayMidnight.getTime())
+    .sort((a,b) => a.dateObj - b.dateObj)
+    .slice(0, limit);
+
+  return { upcoming, todayMidnight };
+}
+
+function renderUpcoming(){
+  const list = document.getElementById('upcomingList');
+  if(!list) return;
+  const { upcoming, todayMidnight } = buildUpcomingList();
+  list.innerHTML = '';
+
+  if(upcoming.length === 0){
+    list.innerHTML = '<div class="upcoming-empty">Nenhum evento futuro no período coberto por este mural (Julho–Dezembro).</div>';
+    return;
+  }
+
+  upcoming.forEach(item => {
+    const isToday = item.dateObj.getTime() === todayMidnight.getTime();
+    const el = document.createElement('div');
+    el.className = 'upcoming-item';
+    el.style.background = `var(--c-${item.ev.c})`;
+    const wd = WEEKDAYS[item.dateObj.getDay()];
+    el.innerHTML = `
+      <div class="upcoming-date">${wd} ${pad2(item.day)}/${pad2(item.month)}${isToday ? ' <span class="upcoming-today-badge">HOJE</span>' : ''}</div>
+      <div class="upcoming-text"></div>
+      ${item.ev.h ? `<div class="upcoming-hour"></div>` : ''}
+    `;
+    el.querySelector('.upcoming-text').textContent = item.ev.t;
+    if(item.ev.h) el.querySelector('.upcoming-hour').textContent = item.ev.h;
+    el.title = 'Clique para editar';
+    el.onclick = () => openEditor(item.month, item.day, item.idx);
+    list.appendChild(el);
+  });
+}
+
 function renderLegend(){
   const el = document.getElementById('legend');
   el.innerHTML = CAT_ORDER.map(c =>
@@ -1610,6 +1746,8 @@ function render(){
     card.appendChild(grid);
     board.appendChild(card);
   });
+
+  renderUpcoming();
 }
 
 document.getElementById('subscribeBtn').onclick = openSubscribePanel;
