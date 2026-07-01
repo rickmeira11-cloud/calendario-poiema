@@ -641,6 +641,14 @@
   .btn-reject:hover{ background:#E3E0D6; }
   .review-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; }
 
+  .review-tag.edit_log{ background:#E8EEF6; color:#2E5C8A; }
+  .review-author{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .review-author b{ color:var(--ink); font-weight:700; }
+
   /* ---- Painel "assinar calendário" ---- */
   .sub-pop{
     background:#fff;
@@ -791,10 +799,14 @@
     <button id="pendingBtn" type="button" style="display:none; position:relative;">🔔 <span id="pendingCount">0</span> mudança(s) pendente(s)</button>
     <button id="restoreAll" type="button" class="danger">↺ Restaurar tudo (dados originais)</button>
     <button id="subscribeBtn" type="button">📅 Assinar no meu calendário</button>
+    <button id="activityLogBtn" type="button">📋 Histórico</button>
     <button id="exportBtn" type="button">⬇️ Exportar backup (.json)</button>
     <button id="importBtn" type="button">⬆️ Importar backup</button>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
-    <div class="save-status"><span class="save-dot" id="saveDot"></span><span id="saveText">Conectando…</span></div>
+    <div class="save-status">
+      <span class="save-dot" id="saveDot"></span><span id="saveText">Conectando…</span>
+      <span style="margin-left:10px;">· <span id="authorLabel">identificar-se</span> <a href="#" id="changeAuthorLink" style="color:#9C9890;text-decoration:underline;">(trocar)</a></span>
+    </div>
   </div>
   <div id="configWarning" class="banner warn" style="display:none;">
     ⚙️ <strong>Configuração necessária:</strong> este mural ainda não está conectado a um projeto Supabase.
@@ -1089,12 +1101,14 @@ async function replaceMonthWithDefault(month){
 async function addEvent(month, day, text, category, hour){
   setSaveStatus('Salvando…', true);
   try{
-    const { error } = await sb.from(TABLE).insert({ month, day, text, category, hour, source: 'manual' });
+    const { data: inserted, error } = await sb.from(TABLE).insert({ month, day, text, category, hour, source: 'manual' }).select().single();
     if(error) throw error;
     await loadData();
+    return inserted;
   }catch(e){
     setSaveStatus('Erro ao salvar', false);
     showError(true);
+    return null;
   }
 }
 
@@ -1178,21 +1192,24 @@ function updatePendingBadge(){
 async function approveChange(change){
   try{
     if(change.change_type === 'add'){
-      const { error } = await sb.from(TABLE).insert({
+      const { data: inserted, error } = await sb.from(TABLE).insert({
         month: change.month, day: change.day,
         text: change.new_text, category: change.new_category, hour: change.new_hour || '',
         source: 'sheet'
-      });
+      }).select().single();
       if(error) throw error;
+      logActivity('add', { event_id: inserted.id, month: change.month, day: change.day, text: change.new_text, category: change.new_category });
     } else if(change.change_type === 'edit' && change.matched_event_id){
       const { error } = await sb.from(TABLE).update({
         text: change.new_text, category: change.new_category, hour: change.new_hour || '',
         source: 'sheet'
       }).eq('id', change.matched_event_id);
       if(error) throw error;
+      logActivity('edit', { event_id: change.matched_event_id, month: change.month, day: change.day, text: change.new_text, category: change.new_category });
     } else if(change.change_type === 'remove' && change.matched_event_id){
       const { error } = await sb.from(TABLE).delete().eq('id', change.matched_event_id);
       if(error) throw error;
+      logActivity('delete', { event_id: change.matched_event_id, month: change.month, day: change.day, text: change.old_text, category: change.old_category });
     }
     await sb.from(PENDING_TABLE).update({ status:'approved' }).eq('id', change.id);
     await loadData();
@@ -1480,6 +1497,46 @@ function renderUpcoming(){
 }
 
 // ---------- Filtro de categorias (a legenda vira clicável) ----------
+// ---------- Identificação leve (sem login) para o histórico de alterações ----------
+const AUTHOR_STORAGE_KEY = 'poiema-mural-author-name';
+let authorName = localStorage.getItem(AUTHOR_STORAGE_KEY) || '';
+
+function updateAuthorLabel(){
+  const label = document.getElementById('authorLabel');
+  if(!label) return;
+  label.textContent = authorName ? `editando como ${authorName}` : 'identificar-se';
+}
+
+function askAuthorName(){
+  const current = authorName || '';
+  const name = prompt('Como você quer ser identificado nas edições deste mural?\n(aparece só no histórico de alterações, não é um login)', current);
+  if(name && name.trim()){
+    authorName = name.trim().slice(0, 40);
+    try{ localStorage.setItem(AUTHOR_STORAGE_KEY, authorName); }catch(e){}
+  }
+  updateAuthorLabel();
+  return authorName;
+}
+
+// Garante que existe um nome antes de uma ação que vai para o histórico.
+// Só pergunta na primeira vez (ou se a pessoa nunca respondeu).
+function ensureAuthorName(){
+  if(authorName) return authorName;
+  return askAuthorName() || 'Anônimo';
+}
+
+async function logActivity(action, { event_id, month, day, text, category }){
+  if(!isConfigured) return;
+  try{
+    await sb.from('mural_activity_log').insert({
+      action, event_id, month, day, text, category,
+      author: ensureAuthorName()
+    });
+  }catch(e){
+    // Não bloqueia o uso do mural se o histórico falhar (ex: tabela não criada ainda)
+  }
+}
+
 const FILTER_STORAGE_KEY = 'poiema-mural-active-filters';
 let activeFilters = new Set(CAT_ORDER);
 loadFilterPreference();
@@ -1515,6 +1572,93 @@ function setAllFilters(showAll){
   saveFilterPreference();
   renderLegend();
   render();
+}
+
+// ---------- Painel "histórico de alterações" ----------
+function timeAgo(isoString){
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if(min < 1) return 'agora mesmo';
+  if(min < 60) return `há ${min} min`;
+  const hrs = Math.floor(min / 60);
+  if(hrs < 24) return `há ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `há ${days}d`;
+}
+
+const ACTION_LABEL = { add:'+ CRIADO', edit:'✎ EDITADO', delete:'− EXCLUÍDO' };
+const ACTION_TAG_CLASS = { add:'add', edit:'edit_log', delete:'remove' };
+
+async function openActivityLog(){
+  const overlay = document.createElement('div');
+  overlay.className = 'editor-overlay';
+
+  const pop = document.createElement('div');
+  pop.className = 'review-pop';
+
+  const head = document.createElement('div');
+  head.className = 'review-head';
+  head.innerHTML = `<h3>📋 Histórico de alterações</h3>`;
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'font-family:Inter,sans-serif;font-weight:600;font-size:12px;border:none;border-radius:7px;padding:6px 10px;cursor:pointer;background:#EFEDE6;color:#555;';
+  closeBtn.textContent = 'Fechar';
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  head.appendChild(closeBtn);
+  pop.appendChild(head);
+
+  const list = document.createElement('div');
+  list.className = 'review-list';
+  list.innerHTML = '<div class="review-empty">Carregando…</div>';
+  pop.appendChild(list);
+
+  overlay.appendChild(pop);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) document.body.removeChild(overlay); });
+  document.body.appendChild(overlay);
+
+  try{
+    const { data: rows, error } = await sb
+      .from('mural_activity_log')
+      .select('*')
+      .order('created_at', { ascending:false })
+      .limit(50);
+    if(error) throw error;
+
+    list.innerHTML = '';
+    if(!rows || rows.length === 0){
+      list.innerHTML = '<div class="review-empty">Nenhuma alteração registrada ainda.</div>';
+      return;
+    }
+
+    rows.forEach(entry => {
+      const item = document.createElement('div');
+      item.className = 'review-item';
+
+      const tag = document.createElement('div');
+      tag.className = 'review-tag ' + (ACTION_TAG_CLASS[entry.action] || 'edit_log');
+      tag.textContent = ACTION_LABEL[entry.action] || entry.action;
+      item.appendChild(tag);
+
+      const body = document.createElement('div');
+      body.className = 'review-body';
+      const dateLine = document.createElement('div');
+      dateLine.className = 'review-date';
+      dateLine.textContent = (entry.month && entry.day) ? `${entry.day} de ${MONTH_NAMES[entry.month]}` : '';
+      const textLine = document.createElement('div');
+      textLine.className = 'review-text';
+      textLine.textContent = entry.text || '(sem descrição)';
+      const authorLine = document.createElement('div');
+      authorLine.className = 'review-author';
+      authorLine.innerHTML = `<b>${entry.author || 'Anônimo'}</b> · ${timeAgo(entry.created_at)}`;
+      body.appendChild(dateLine);
+      body.appendChild(textLine);
+      body.appendChild(authorLine);
+      item.appendChild(body);
+
+      list.appendChild(item);
+    });
+  }catch(e){
+    list.innerHTML = `<div class="review-empty">Não foi possível carregar o histórico.<br><small>${e.message}</small></div>`;
+  }
 }
 
 function renderLegend(){
@@ -1610,6 +1754,7 @@ function openEditor(month, day, idx){
     delBtn.onclick = async () => {
       document.body.removeChild(overlay);
       await deleteEvent(ev.id);
+      logActivity('delete', { event_id: ev.id, month, day, text: ev.t, category: ev.c });
     };
     actions.appendChild(delBtn);
   }
@@ -1629,9 +1774,11 @@ function openEditor(month, day, idx){
     if(!txt){ document.body.removeChild(overlay); return; }
     document.body.removeChild(overlay);
     if(isNew){
-      await addEvent(month, day, txt, selectedCat, hourTxt);
+      const inserted = await addEvent(month, day, txt, selectedCat, hourTxt);
+      if(inserted) logActivity('add', { event_id: inserted.id, month, day, text: txt, category: selectedCat });
     } else {
       await updateEvent(ev.id, txt, selectedCat, hourTxt);
+      logActivity('edit', { event_id: ev.id, month, day, text: txt, category: selectedCat });
     }
   };
   actions.appendChild(saveBtn);
@@ -1832,6 +1979,9 @@ function render(){
 }
 
 document.getElementById('subscribeBtn').onclick = openSubscribePanel;
+document.getElementById('activityLogBtn').onclick = openActivityLog;
+document.getElementById('changeAuthorLink').onclick = (e) => { e.preventDefault(); askAuthorName(); };
+updateAuthorLabel();
 document.getElementById('exportBtn').onclick = exportBackup;
 document.getElementById('syncBtn').onclick = triggerSync;
 document.getElementById('pendingBtn').onclick = openReviewPanel;
@@ -1851,7 +2001,7 @@ document.getElementById('restoreAll').onclick = () => {
 };
 
 document.getElementById('addLegendInfo').onclick = () => {
-  alert('Como usar este mural:\n\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\n📅 Clique em "Assinar no meu calendário" para que os eventos apareçam automaticamente no seu Google Agenda, Apple Calendar ou Outlook — sempre atualizados, sem precisar voltar aqui.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use os botões "restaurar" se quiser voltar aos dados originais da planilha (isso afeta todo mundo).');
+  alert('Como usar este mural:\n\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\n📅 Clique em "Assinar no meu calendário" para que os eventos apareçam automaticamente no seu Google Agenda, Apple Calendar ou Outlook — sempre atualizados, sem precisar voltar aqui.\n\n📋 Na primeira edição que você fizer, o mural pergunta como quer ser identificado (não é login, é só pra aparecer no histórico). Clique em "Histórico" pra ver quem alterou o quê e quando. Clique em "(trocar)" ao lado do seu nome se quiser mudar como aparece.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use os botões "restaurar" se quiser voltar aos dados originais da planilha (isso afeta todo mundo).');
 };
 
 // ---------- Inicialização ----------
