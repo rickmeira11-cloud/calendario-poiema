@@ -261,6 +261,24 @@
   .month-card:nth-child(even){ transform:rotate(0.4deg); }
   .month-card:hover{ transform:rotate(0deg); transition:transform .2s ease; z-index:5; }
 
+  .month-card.month-past{
+    opacity:0.5;
+    filter:grayscale(0.5);
+  }
+  .month-card.month-past:hover{
+    opacity:0.85;
+    filter:grayscale(0.15);
+  }
+  .month-card.month-current .month-head h2::after{
+    content:'• hoje';
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:11px;
+    color:var(--pin);
+    margin-left:8px;
+    vertical-align:middle;
+  }
+
   .tape{
     position:absolute;
     top:-10px; left:50%;
@@ -337,6 +355,24 @@
   .day-cell.empty{
     background:transparent;
     border:none;
+  }
+  .day-cell.today{
+    border:2px solid var(--pin);
+    box-shadow:0 0 0 3px rgba(226,114,91,0.18);
+  }
+  .day-cell.today .day-num{
+    color:var(--pin);
+    font-weight:800;
+  }
+  .day-cell.today .day-num::after{
+    content:'';
+    display:inline-block;
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:var(--pin);
+    margin-left:4px;
+    vertical-align:middle;
   }
   .day-num{
     font-size:10px;
@@ -904,6 +940,26 @@ const MONTH_NAMES = {7:'Julho',8:'Agosto',9:'Setembro',10:'Outubro',11:'Novembro
 // dados de exemplo em DEFAULT_DATA continuam sendo de 2026 e
 // precisam de atualização manual separada quando isso acontecer.)
 const CALENDAR_YEAR = 2026;
+
+// Data de hoje, calculada uma vez — usada para marcar o dia atual
+// e deixar meses passados "apagadinhos".
+const TODAY = (() => {
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
+})();
+
+let hasScrolledToCurrentMonth = false;
+function scrollToCurrentMonthOnce(){
+  if(hasScrolledToCurrentMonth) return;
+  if(CALENDAR_YEAR !== TODAY.year) return; // ano do calendário não é o ano corrente — não força scroll
+  const target = document.getElementById(`month-card-${TODAY.month}`);
+  if(!target) return;
+  hasScrolledToCurrentMonth = true;
+  // Pequeno atraso para garantir que o layout já assentou antes de rolar
+  setTimeout(() => {
+    target.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 150);
+}
 
 // ---- Dados originais extraídos da planilha (Jul-Dez 2026), usados para semear/restaurar ----
 const DEFAULT_DATA = {
@@ -2010,6 +2066,13 @@ function render(){
   Object.keys(MONTH_NAMES).map(Number).forEach(month => {
     const card = document.createElement('div');
     card.className = 'month-card';
+    card.id = `month-card-${month}`;
+
+    if(CALENDAR_YEAR < TODAY.year || (CALENDAR_YEAR === TODAY.year && month < TODAY.month)){
+      card.classList.add('month-past');
+    } else if(CALENDAR_YEAR === TODAY.year && month === TODAY.month){
+      card.classList.add('month-current');
+    }
 
     const tape = document.createElement('div');
     tape.className = 'tape';
@@ -2054,6 +2117,9 @@ function render(){
     for(let d=1; d<=total; d++){
       const cell = document.createElement('div');
       cell.className = 'day-cell';
+      if(month === TODAY.month && d === TODAY.day && CALENDAR_YEAR === TODAY.year){
+        cell.classList.add('today');
+      }
 
       const num = document.createElement('div');
       num.className = 'day-num';
@@ -2120,6 +2186,7 @@ function render(){
   });
 
   renderUpcoming();
+  scrollToCurrentMonthOnce();
 }
 
 document.getElementById('subscribeBtn').onclick = openSubscribePanel;
