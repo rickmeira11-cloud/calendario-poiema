@@ -56,11 +56,78 @@ function guessCategory(text) {
   return 'especial';
 }
 
+// Separa os eventos de uma célula e extrai o horário de cada um.
+// Convenções que convivem na planilha (todas suportadas):
+//   "Culto | 18h"                         -> 1 evento: Culto (18h)   [| separa descrição do horário]
+//   "Culto | 18h | ZADOK MUSIC 10h"       -> 2 eventos: Culto (18h) + ZADOK MUSIC (10h)
+//   "Culto | Super Seed"                  -> 1 evento: "Culto | Super Seed"  [| decorativo, sem horário]
+//   "2ou+ Influa 17h  Culto Influa 19h"   -> 2 eventos (separados por 2+ espaços)
+//   "...9h-12h\n...14h-17h30"             -> 2 eventos (quebra de linha)
+//   "Power kids 10:30"                    -> horário com dois-pontos também é aceito
+//   "Culto 10h (horário especial)"        -> horário extraído mesmo no meio do texto
+//
+// Horário aceito: 18h, 13h30, 9h-12h, 10:30, 14h-17h30, etc.
+const HOUR_TOKEN = '\\d{1,2}(?:[h:]\\d{0,2}|h)(?:\\s*[-\u2013\u00e0s]+\\s*\\d{1,2}(?:[h:]\\d{0,2}|h))?';
+const HOUR_ONLY_RE = new RegExp('^\\s*(?:' + HOUR_TOKEN + ')\\s*$', 'i');
+const HOUR_ANYWHERE_RE = new RegExp('(?:^|\\s)(' + HOUR_TOKEN + ')(?=\\s|$|\\()', 'i');
+
+function extractHour(text) {
+  const t = text.trim();
+  const m = t.match(HOUR_ANYWHERE_RE);
+  if (m) {
+    const hour = m[1].trim();
+    const desc = (t.slice(0, m.index) + ' ' + t.slice(m.index + m[0].length)).replace(/\s{2,}/g, ' ').trim();
+    if (desc) return { text: desc, hour };
+    return { text: t, hour: '' };
+  }
+  return { text: t, hour: '' };
+}
+
 function splitEvents(cellText) {
-  return cellText
-    .split(/\n+/)
-    .map(s => s.replace(/\s{2,}/g, ' ').trim())
-    .filter(Boolean);
+  // Primeiro por quebra de linha, depois por 2+ espaços (eventos distintos)
+  const rawPieces = [];
+  cellText.split(/\n+/).forEach(line => {
+    line.split(/\s{2,}/).forEach(part => {
+      const clean = part.trim();
+      if (clean) rawPieces.push(clean);
+    });
+  });
+
+  const events = [];
+  rawPieces.forEach(piece => {
+    const barParts = piece.split('|').map(s => s.trim()).filter(Boolean);
+
+    if (barParts.length <= 1) {
+      if (HOUR_ONLY_RE.test(piece)) {
+        if (events.length && !events[events.length - 1].hour) events[events.length - 1].hour = piece.trim();
+      } else {
+        events.push(extractHour(piece));
+      }
+      return;
+    }
+
+    // Tem "|": ele só separa EVENTOS se alguma parte for um horário puro
+    // (ex: "... | 18h | ..."). Sem horário puro, o "|" é decorativo -> 1 evento.
+    const temHorarioPuro = barParts.some(bp => HOUR_ONLY_RE.test(bp));
+    if (!temHorarioPuro) {
+      events.push(extractHour(piece.replace(/\s*\|\s*/g, ' | ')));
+      return;
+    }
+
+    const localEvents = [];
+    barParts.forEach(bp => {
+      if (HOUR_ONLY_RE.test(bp)) {
+        if (localEvents.length && !localEvents[localEvents.length - 1].hour) {
+          localEvents[localEvents.length - 1].hour = bp;
+        }
+      } else {
+        localEvents.push(extractHour(bp));
+      }
+    });
+    localEvents.forEach(e => events.push(e));
+  });
+
+  return events; // [{ text, hour }, ...]
 }
 
 // ---------- Comparação "inteligente" de texto ----------
@@ -241,20 +308,24 @@ module.exports = async (req, res) => {
       const month = Number(monthStr);
       Object.keys(sheetData[month]).forEach(dayStr => {
         const day = Number(dayStr);
-        const sheetTexts = sheetData[month][day];
+        const sheetEvents = sheetData[month][day]; // [{text, hour}, ...]
         const currentForDay = sheetSourced.filter(e => e.month === month && e.day === day);
 
-        // 1ª passada: combina o que é idêntico (ignorando espaços/maiúsculas) —
-        // isso nunca vira proposta, é tratado como "sem mudança real".
+        // 1ª passada: combina o que é idêntico em texto E horário
+        // (ignorando espaços/maiúsculas) — isso nunca vira proposta.
         const usedCurrent = new Set();
-        const unmatchedSheetTexts = [];
-        sheetTexts.forEach(text => {
-          const ni = normalize(text);
-          const matchIdx = currentForDay.findIndex((ev, idx) => !usedCurrent.has(idx) && normalize(ev.text) === ni);
+        const unmatchedSheet = [];
+        sheetEvents.forEach(se => {
+          const ni = normalize(se.text);
+          const matchIdx = currentForDay.findIndex((ev, idx) =>
+            !usedCurrent.has(idx) &&
+            normalize(ev.text) === ni &&
+            normalize(ev.hour || '') === normalize(se.hour || '')
+          );
           if (matchIdx !== -1) {
             usedCurrent.add(matchIdx);
           } else {
-            unmatchedSheetTexts.push(text);
+            unmatchedSheet.push(se);
           }
         });
         const unmatchedCurrent = currentForDay
@@ -262,15 +333,15 @@ module.exports = async (req, res) => {
           .filter(({ idx }) => !usedCurrent.has(idx));
 
         // 2ª passada: entre o que sobrou, tenta parear por similaridade de texto.
-        // Se for parecido o bastante, é uma EDIÇÃO (uma proposta só, mais clara).
-        // Se não for parecido com nada, é de fato um ADD novo ou um REMOVE de verdade.
+        // Se for parecido o bastante, é uma EDIÇÃO (uma proposta só, mais clara) —
+        // cobre tanto mudança de texto quanto só de horário.
         const usedCurrentForEdit = new Set();
-        unmatchedSheetTexts.forEach(text => {
+        unmatchedSheet.forEach(se => {
           let best = null;
           let bestScore = 0;
           unmatchedCurrent.forEach(({ ev, idx }) => {
             if (usedCurrentForEdit.has(idx)) return;
-            const score = similarity(normalize(text), normalize(ev.text));
+            const score = similarity(normalize(se.text), normalize(ev.text));
             if (score > bestScore) { bestScore = score; best = { ev, idx }; }
           });
 
@@ -279,9 +350,9 @@ module.exports = async (req, res) => {
             proposals.push(makeProposal({
               month, day,
               change_type: 'edit',
-              new_text: text,
-              new_category: guessCategory(text),
-              new_hour: best.ev.hour || '',
+              new_text: se.text,
+              new_category: guessCategory(se.text),
+              new_hour: se.hour || '',
               old_text: best.ev.text,
               old_category: best.ev.category,
               old_hour: best.ev.hour,
@@ -291,9 +362,9 @@ module.exports = async (req, res) => {
             proposals.push(makeProposal({
               month, day,
               change_type: 'add',
-              new_text: text,
-              new_category: guessCategory(text),
-              new_hour: ''
+              new_text: se.text,
+              new_category: guessCategory(se.text),
+              new_hour: se.hour || ''
             }));
           }
         });
