@@ -69,28 +69,43 @@ function guessCategory(text) {
 // Horário aceito: 18h, 13h30, 9h-12h, 10:30, 14h-17h30, etc.
 const HOUR_TOKEN = '\\d{1,2}(?:[h:]\\d{0,2}|h)(?:\\s*[-\u2013\u00e0s]+\\s*\\d{1,2}(?:[h:]\\d{0,2}|h))?';
 const HOUR_ONLY_RE = new RegExp('^\\s*(?:' + HOUR_TOKEN + ')\\s*$', 'i');
-const HOUR_ANYWHERE_RE = new RegExp('(?:^|\\s)(' + HOUR_TOKEN + ')(?=\\s|$|\\()', 'i');
+// Horário APENAS no final "limpo" do texto (nada relevante depois dele).
+// Isso evita arrancar um horário de dentro de uma frase, como
+// "Batismo (bate papo as 16h e batismo no culto)" — ali o 16h fica na descrição.
+const TRAILING_HOUR_RE = new RegExp('\\s+(' + HOUR_TOKEN + ')\\s*$', 'i');
 
 function extractHour(text) {
   const t = text.trim();
-  const m = t.match(HOUR_ANYWHERE_RE);
+  const m = t.match(TRAILING_HOUR_RE);
   if (m) {
-    const hour = m[1].trim();
-    const desc = (t.slice(0, m.index) + ' ' + t.slice(m.index + m[0].length)).replace(/\s{2,}/g, ' ').trim();
-    if (desc) return { text: desc, hour };
-    return { text: t, hour: '' };
+    const desc = t.slice(0, m.index).trim();
+    // Só separa o horário se sobrar uma descrição de verdade e ela não terminar
+    // em "as/às" (senão "2OU+ as 20h" perderia o "as"). Nesses casos, mantém junto.
+    if (desc && !/\b(as|\u00e0s)$/i.test(desc)) {
+      return { text: desc, hour: m[1].trim() };
+    }
   }
   return { text: t, hour: '' };
 }
 
 function splitEvents(cellText) {
-  // Primeiro por quebra de linha, depois por 2+ espaços (eventos distintos)
+  // Primeiro por quebra de linha, depois por 2+ espaços (eventos distintos).
+  // Exceção: um trecho que começa com "(" é continuação entre parênteses do
+  // trecho anterior (ex: "...19h  (um contra cultura Halloween?)"), não um
+  // evento novo — então ele é reanexado ao anterior.
   const rawPieces = [];
   cellText.split(/\n+/).forEach(line => {
+    const merged = [];
     line.split(/\s{2,}/).forEach(part => {
       const clean = part.trim();
-      if (clean) rawPieces.push(clean);
+      if (!clean) return;
+      if (merged.length && clean.startsWith('(')) {
+        merged[merged.length - 1] += ' ' + clean;
+      } else {
+        merged.push(clean);
+      }
     });
+    merged.forEach(m => rawPieces.push(m));
   });
 
   const events = [];
@@ -180,6 +195,20 @@ async function fetchSheetCSV() {
 }
 
 // ---------- Localiza dinamicamente onde cada mês começa na grade ----------
+// Reconhece o mês mesmo com texto extra no cabeçalho, ex:
+// "Outubro (nascimento previsto Timóteo)" ainda é identificado como Outubro.
+// Exige que a célula COMECE com o nome do mês seguido de espaço, "(" ou fim,
+// para não confundir com uma célula que só mencione o mês no meio de uma frase.
+function matchMonthName(cell) {
+  const c = (cell || '').trim();
+  for (const name in MONTH_NUMBERS) {
+    if (c === name || c.startsWith(name + ' ') || c.startsWith(name + '(')) {
+      return MONTH_NUMBERS[name];
+    }
+  }
+  return null;
+}
+
 function parseSheetData(rows) {
   let headerRowIdx = -1;
   const monthCols = [];
@@ -187,9 +216,9 @@ function parseSheetData(rows) {
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     for (let c = 0; c < row.length; c++) {
-      const cell = (row[c] || '').trim();
-      if (MONTH_NUMBERS[cell]) {
-        monthCols.push({ month: MONTH_NUMBERS[cell], dateCol: c, eventCol: c + 2 });
+      const monthNum = matchMonthName(row[c]);
+      if (monthNum) {
+        monthCols.push({ month: monthNum, dateCol: c, eventCol: c + 2 });
         headerRowIdx = r;
       }
     }
