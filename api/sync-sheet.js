@@ -7,6 +7,11 @@
 const SHEET_ID = '1S-g1goGXZizS1LBtDPhmKi7ZuMgS-xpI';
 const GID = '503563247';
 
+// Ano que este endpoint de sincronização representa.
+// Para adicionar 2027: crie uma segunda função (ex: api/sync-sheet-2027.js) com SHEET_YEAR = 2027
+// apontando para o GID da aba 2027. Este arquivo fica em 2026 para sempre.
+const SHEET_YEAR = 2026;
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
@@ -301,6 +306,7 @@ function makeProposal({
   matched_event_id = null
 }) {
   return {
+    year: SHEET_YEAR,
     month,
     day,
     change_type,
@@ -330,7 +336,7 @@ module.exports = async (req, res) => {
     const rows = parseCSV(csvText);
     const sheetData = parseSheetData(rows);
 
-    const currentEvents = await supabaseRequest('mural_events?select=id,month,day,text,category,hour,source');
+    const currentEvents = await supabaseRequest(`mural_events?select=id,year,month,day,text,category,hour,source&year=eq.${SHEET_YEAR}`);
     const sheetSourced = currentEvents.filter(e => e.source === 'sheet');
 
     const proposals = [];

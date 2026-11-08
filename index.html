@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mural: Calendário 2026 - Poiema BNU 💎</title>
+<title>Mural · Agenda Poiema BNU</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -16,13 +16,17 @@
 <body>
 
 <header class="top">
-  <h1><img src="logo-poiema.png" alt="Poiema"> Mural: Calendário 2026 - Poiema BNU</h1>
-  <p class="sub">Julho a Dezembro · sincronizado em tempo real via Supabase · clique em qualquer evento para editar · clique em "+" para adicionar</p>
+  <h1><img src="logo-poiema.png" alt="Poiema"> Agenda Poiema BNU</h1>
+  <p class="sub">Sincronizado em tempo real · clique em qualquer evento para editar · clique em "+" para adicionar</p>
   <div class="toolbar">
+    <div class="year-selector" id="yearSelector">
+      <button id="yearPrev" type="button" aria-label="Ano anterior">◀</button>
+      <span id="yearDisplay">2026</span>
+      <button id="yearNext" type="button" aria-label="Próximo ano">▶</button>
+    </div>
     <button id="addLegendInfo" type="button">ℹ️ Como usar</button>
     <button id="syncBtn" type="button">🔄 Verificar mudanças da planilha</button>
     <button id="pendingBtn" type="button" style="display:none; position:relative;">🔔 <span id="pendingCount">0</span> mudança(s) pendente(s)</button>
-    <button id="restoreAll" type="button" class="danger">↺ Restaurar tudo (dados originais)</button>
     <button id="subscribeBtn" type="button">📅 Assinar no meu calendário</button>
     <button id="activityLogBtn" type="button">📋 Histórico</button>
     <button id="shareWeekBtn" type="button">📤 Compartilhar semana</button>
@@ -36,14 +40,11 @@
   </div>
   <div id="configWarning" class="banner warn" style="display:none;">
     ⚙️ <strong>Configuração necessária:</strong> este mural ainda não está conectado a um projeto Supabase.
-    Edite as constantes <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no início do código (logo após a tag <code>&lt;script&gt;</code> principal)
-    com os dados do seu projeto (Supabase → Project Settings → API). Depois rode o script <code>supabase-setup-mural.sql</code> no SQL Editor do seu projeto.
+    Edite as constantes <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no início do <code>app.js</code>
+    com os dados do seu projeto (Supabase → Project Settings → API). Depois rode o script SQL de setup no SQL Editor do seu projeto.
   </div>
   <div id="errorWarning" class="banner warn" style="display:none;">
     ⚠️ Não foi possível conectar ao Supabase. Verifique a URL/chave configuradas, se o script SQL foi executado, e sua conexão de internet.
-  </div>
-  <div id="seedBanner" class="banner info" style="display:none;">
-    📭 Esta tabela ainda está vazia. <button id="seedBtn" type="button">Carregar dados originais da planilha</button>
   </div>
   <div class="legend" id="legend"></div>
   <div class="upcoming-box">
@@ -57,7 +58,7 @@
 <footer class="note">
   Este mural usa Supabase como banco de dados compartilhado — qualquer pessoa que abrir este link vê e edita os mesmos
   dados, com sincronização em tempo real entre todos. Use "Exportar backup" periodicamente para guardar uma cópia de
-  segurança em .json. "Restaurar tudo" apaga todos os dados atuais do banco e recarrega os dados originais extraídos da planilha.
+  segurança em .json.
 </footer>
 
 <script src="app.js"></script>

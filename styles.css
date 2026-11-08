@@ -78,7 +78,36 @@
     transition:transform .12s ease, background .12s ease;
   }
   .toolbar button:hover{ background:#474C54; transform:translateY(-1px); }
-  .toolbar button.danger:hover{ background:#6b3530; }
+  /* seletor de ano */
+  .year-selector{
+    display:flex;
+    align-items:center;
+    gap:0;
+    background:#3A3E45;
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .year-selector button{
+    background:transparent;
+    border:none;
+    color:#F3F1EA;
+    font-size:14px;
+    padding:6px 10px;
+    cursor:pointer;
+    line-height:1;
+    transition:background .12s;
+  }
+  .year-selector button:hover{ background:#474C54; }
+  .year-selector button:disabled{ opacity:0.3; cursor:default; }
+  #yearDisplay{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    color:#F3F1EA;
+    padding:0 6px;
+    min-width:36px;
+    text-align:center;
+  }
   .toolbar button#pendingBtn{
     background:#C77D2B;
     color:#fff;

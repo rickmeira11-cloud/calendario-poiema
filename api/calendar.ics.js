@@ -10,7 +10,7 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-const CALENDAR_YEAR = 2026; // mesmo valor usado no index.html — ver nota no código do mural
+// CALENDAR_YEAR removido: cada evento agora carrega seu próprio ano (ev.year).
 
 const CAT_LABEL = {
   influa: '2OU+ / Influa / Jovens Casais',
@@ -88,7 +88,7 @@ function foldLine(line) {
 
 async function fetchEvents() {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/mural_events?select=id,month,day,text,category,hour&order=month.asc,day.asc`,
+    `${SUPABASE_URL}/rest/v1/mural_events?select=id,year,month,day,text,category,hour&order=year.asc,month.asc,day.asc`,
     {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
@@ -109,22 +109,23 @@ function buildEvent(ev) {
   const description = escapeICS(CAT_LABEL[ev.category] || ev.category || '');
   const dtstamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
+  const year = ev.year || 2026;
   const parsed = parseHour(ev.hour);
   let dtLines;
 
   if (!parsed) {
     // Sem horário definido → evento de dia inteiro
     dtLines = [
-      `DTSTART;VALUE=DATE:${allDayICSDate(CALENDAR_YEAR, ev.month, ev.day)}`,
-      `DTEND;VALUE=DATE:${allDayICSDate(CALENDAR_YEAR, ev.month, ev.day, 1)}`
+      `DTSTART;VALUE=DATE:${allDayICSDate(year, ev.month, ev.day)}`,
+      `DTEND;VALUE=DATE:${allDayICSDate(year, ev.month, ev.day, 1)}`
     ];
   } else {
-    const startUTC = brtToUtcICSDateTime(CALENDAR_YEAR, ev.month, ev.day, parsed.start.h, parsed.start.m);
+    const startUTC = brtToUtcICSDateTime(year, ev.month, ev.day, parsed.start.h, parsed.start.m);
     let endUTC;
     if (parsed.end) {
-      endUTC = brtToUtcICSDateTime(CALENDAR_YEAR, ev.month, ev.day, parsed.end.h, parsed.end.m);
+      endUTC = brtToUtcICSDateTime(year, ev.month, ev.day, parsed.end.h, parsed.end.m);
     } else {
-      const endDate = new Date(Date.UTC(CALENDAR_YEAR, ev.month - 1, ev.day, parsed.start.h + 3, parsed.start.m, 0));
+      const endDate = new Date(Date.UTC(year, ev.month - 1, ev.day, parsed.start.h + 3, parsed.start.m, 0));
       endDate.setUTCMinutes(endDate.getUTCMinutes() + DEFAULT_DURATION_MIN);
       endUTC = `${endDate.getUTCFullYear()}${pad2(endDate.getUTCMonth() + 1)}${pad2(endDate.getUTCDate())}T${pad2(endDate.getUTCHours())}${pad2(endDate.getUTCMinutes())}00Z`;
     }
@@ -156,10 +157,10 @@ module.exports = async (req, res) => {
     const header = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Poiema BNU//Mural Calendario 2026//PT-BR',
+      'PRODID:-//Poiema BNU//Mural Calendario//PT-BR',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      'X-WR-CALNAME:Mural Poiema BNU 2026',
+      'X-WR-CALNAME:Mural Poiema BNU',
       'X-WR-TIMEZONE:America/Sao_Paulo'
     ].map(foldLine).join('\r\n');
 

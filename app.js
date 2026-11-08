@@ -10,6 +10,7 @@ const isConfigured = !SUPABASE_URL.includes('SUA_SUPABASE_URL_AQUI') && !SUPABAS
 const sb = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const TABLE = 'mural_events';
 const PENDING_TABLE = 'mural_pending_changes';
+
 function escapeHtml(s){
   return String(s??'')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -30,154 +31,51 @@ const CAT_LABEL = {
 };
 const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const MONTH_NAMES = {7:'Julho',8:'Agosto',9:'Setembro',10:'Outubro',11:'Novembro',12:'Dezembro'};
-// Ano do calendário — quando 2027 chegar, troque só este número.
-// (Vale lembrar: os textos "Julho a Dezembro" no cabeçalho e os
-// dados de exemplo em DEFAULT_DATA continuam sendo de 2026 e
-// precisam de atualização manual separada quando isso acontecer.)
-const CALENDAR_YEAR = 2026;
 
-// Data de hoje, calculada uma vez — usada para marcar o dia atual
-// e deixar meses passados "apagadinhos".
+// Anos que o mural oferece. Para adicionar 2028, basta incluir aqui.
+const KNOWN_YEARS = [2026, 2027];
+
+// Data de hoje, calculada uma vez.
 const TODAY = (() => {
   const now = new Date();
   return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
 })();
 
+// Ano selecionado no momento (começa no ano corrente se estiver em KNOWN_YEARS, senão no primeiro).
+let selectedYear = KNOWN_YEARS.includes(TODAY.year) ? TODAY.year : KNOWN_YEARS[0];
+
 let hasScrolledToCurrentMonth = false;
+
+function updateYearSelector(){
+  const display = document.getElementById('yearDisplay');
+  const prev = document.getElementById('yearPrev');
+  const next = document.getElementById('yearNext');
+  if(display) display.textContent = selectedYear;
+  if(prev) prev.disabled = selectedYear <= KNOWN_YEARS[0];
+  if(next) next.disabled = selectedYear >= KNOWN_YEARS[KNOWN_YEARS.length - 1];
+}
+
+function changeYear(delta){
+  const idx = KNOWN_YEARS.indexOf(selectedYear);
+  const newIdx = idx + delta;
+  if(newIdx < 0 || newIdx >= KNOWN_YEARS.length) return;
+  selectedYear = KNOWN_YEARS[newIdx];
+  hasScrolledToCurrentMonth = false;
+  updateYearSelector();
+  loadData();
+  loadPendingChanges();
+}
+
 function scrollToCurrentMonthOnce(){
   if(hasScrolledToCurrentMonth) return;
-  if(CALENDAR_YEAR !== TODAY.year) return; // ano do calendário não é o ano corrente — não força scroll
+  if(selectedYear !== TODAY.year) return;
   const target = document.getElementById(`month-card-${TODAY.month}`);
   if(!target) return;
   hasScrolledToCurrentMonth = true;
-  // Pequeno atraso para garantir que o layout já assentou antes de rolar
   setTimeout(() => {
     target.scrollIntoView({ behavior:'smooth', block:'start' });
   }, 150);
 }
-
-// ---- Dados originais extraídos da planilha (Jul-Dez 2026), usados para semear/restaurar ----
-const DEFAULT_DATA = {
-  7: {
-    1:[], 2:[{t:'2OU+',c:'vinte',h:'20h'}], 3:[],
-    4:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    5:[{t:'Curso de Noivos',c:'especial',h:'13h30'},{t:'Culto (horário especial)',c:'culto',h:'10h'}],
-    6:[], 7:[{t:'Reunião Liderança ministérios',c:'lideranca',h:''}],
-    8:[{t:'2OU+',c:'vinte',h:'20h'}], 9:[], 10:[],
-    11:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    12:[{t:'Curso de Noivos',c:'especial',h:'13h30'},{t:'Culto Ceia',c:'culto',h:'18h'}],
-    13:[], 14:[{t:'Leadersheep (presencial)',c:'lideranca',h:'20h'}],
-    15:[{t:'FÉRIAS 2OU+',c:'ferias',h:''}],
-    16:[{t:'Estudo Bíblico para mulheres (online)',c:'estudo',h:'20h'}],
-    17:[],
-    18:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    19:[{t:'Curso de Noivos',c:'especial',h:'13h30'},{t:'Culto',c:'culto',h:'18h'}],
-    20:[], 21:[],
-    22:[{t:'FÉRIAS 2OU+',c:'ferias',h:''}],
-    23:[], 24:[],
-    25:[{t:'Workshop Influa Masc',c:'especial',h:'9h-12h'},{t:'Workshop Influa Fem',c:'especial',h:'14h-17h30'}],
-    26:[{t:'Culto',c:'culto',h:'18h'}], 27:[], 28:[],
-    29:[{t:'FÉRIAS 2OU+',c:'ferias',h:''}], 30:[],
-    31:[{t:'Zadok Local',c:'zadok',h:'19h'}]
-  },
-  8: {
-    1:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    2:[{t:'Culto',c:'culto',h:'18h'}], 3:[],
-    4:[{t:'Leadersheep (presencial)',c:'lideranca',h:'20h'}],
-    5:[{t:'2OU+',c:'vinte',h:'20h'}], 6:[], 7:[],
-    8:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'},{t:'Culto Influa (Pais&Filhos)',c:'especial',h:'19h'}],
-    9:[{t:'Culto Pais e Ceia',c:'culto',h:'18h'}], 10:[],
-    11:[{t:'Reunião Liderança ministérios',c:'lideranca',h:''}],
-    12:[{t:'2OU+',c:'vinte',h:'20h'}], 13:[], 14:[],
-    15:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    16:[{t:'Culto',c:'culto',h:'18h'}], 17:[], 18:[],
-    19:[{t:'2OU+',c:'vinte',h:'20h'}],
-    20:[{t:'Estudo Bíblico para mulheres (online)',c:'estudo',h:'20h'}],
-    21:[], 22:[],
-    23:[{t:'Culto',c:'culto',h:'18h'}], 24:[], 25:[],
-    26:[{t:'2OU+',c:'vinte',h:'20h'}], 27:[],
-    28:[{t:'Zadok Local',c:'zadok',h:'19h'}],
-    29:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'},{t:'Culto Influa',c:'especial',h:'19h'}],
-    30:[{t:'Culto',c:'culto',h:'18h'}], 31:[]
-  },
-  9: {
-    1:[{t:'Reunião Liderança ministérios',c:'lideranca',h:''}],
-    2:[{t:'2OU+',c:'vinte',h:'20h'}], 3:[], 4:[],
-    5:[{t:'Welcome Coffee',c:'especial',h:''},{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    6:[{t:'Culto',c:'culto',h:'18h'},{t:'Batismo (bate-papo + batismo no culto)',c:'especial',h:'16h'}],
-    7:[{t:'Feriado',c:'feriado',h:''}], 8:[],
-    9:[{t:'2OU+',c:'vinte',h:'20h'}], 10:[], 11:[],
-    12:[{t:'Poiemake BNU',c:'especial',h:'15h'},{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    13:[{t:'Culto Ceia',c:'culto',h:'18h'}], 14:[],
-    15:[{t:'Leadersheep (presencial)',c:'lideranca',h:'20h'}],
-    16:[{t:'2OU+',c:'vinte',h:'20h'}], 17:[],
-    18:[{t:'Zadok Local',c:'zadok',h:'19h'}],
-    19:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'},{t:'Culto Influa',c:'especial',h:'19h'}],
-    20:[{t:'Culto',c:'culto',h:'18h'}], 21:[], 22:[],
-    23:[{t:'2OU+',c:'vinte',h:'20h'}],
-    24:[{t:'Estudo Bíblico para mulheres (online)',c:'estudo',h:'20h'}],
-    25:[{t:'Poieman BNU TBO (definir acampar/interno)',c:'especial',h:''}],
-    26:[{t:'Poieman BNU TBO (definir acampar/interno)',c:'especial',h:''},{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    27:[{t:'Culto',c:'culto',h:'18h'}], 28:[], 29:[],
-    30:[{t:'2OU+',c:'vinte',h:'20h'}]
-  },
-  10: {
-    1:[{t:'Culto',c:'culto',h:'18h'}], 2:[],
-    3:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'},{t:'Culto Influa',c:'especial',h:'19h'}],
-    4:[], 5:[],
-    6:[{t:'Reunião Liderança ministérios',c:'lideranca',h:''}],
-    7:[{t:'2OU+',c:'vinte',h:'20h'}], 8:[], 9:[], 10:[],
-    11:[{t:'Culto Ceia',c:'culto',h:'18h'}], 12:[],
-    13:[{t:'Leadersheep (presencial)',c:'lideranca',h:'20h'}],
-    14:[{t:'2OU+',c:'vinte',h:'20h'}], 15:[], 16:[],
-    17:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'},{t:'Culto Influa',c:'especial',h:'19h'}],
-    18:[{t:'Culto',c:'culto',h:'18h'}], 19:[], 20:[],
-    21:[{t:'2OU+',c:'vinte',h:'20h'}],
-    22:[{t:'Estudo Bíblico para mulheres (online)',c:'estudo',h:'20h'}],
-    23:[{t:'Zadok Local',c:'zadok',h:'19h'}],
-    24:[{t:'Power Kids',c:'especial',h:'13h-16h30'},{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}],
-    25:[{t:'Culto',c:'culto',h:'18h'}], 26:[], 27:[],
-    28:[{t:'2OU+',c:'vinte',h:'20h'}], 29:[], 30:[],
-    31:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'}]
-  },
-  11: {
-    1:[{t:'Culto',c:'culto',h:'18h'}], 2:[],
-    3:[{t:'Reunião Liderança ministérios',c:'lideranca',h:''}],
-    4:[{t:'2OU+',c:'vinte',h:'20h'}], 5:[], 6:[],
-    7:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'},{t:'Culto Influa',c:'especial',h:'19h'}],
-    8:[{t:'Culto Ceia',c:'culto',h:'18h'}], 9:[],
-    10:[{t:'Leadersheep (presencial)',c:'lideranca',h:'20h'}],
-    11:[{t:'2OU+',c:'vinte',h:'20h'}], 12:[],
-    13:[{t:'Conferência Taubaté (a confirmar)',c:'especial',h:''}],
-    14:[{t:'Conferência Taubaté (a confirmar)',c:'especial',h:''}],
-    15:[{t:'Culto',c:'culto',h:'18h'}], 16:[], 17:[],
-    18:[{t:'2OU+',c:'vinte',h:'20h'}], 19:[], 20:[],
-    21:[{t:'2OU+ Influa e Jovens Casais',c:'influa',h:'17h'},{t:'Culto Influa',c:'especial',h:'19h'}],
-    22:[{t:'Culto',c:'culto',h:'18h'}], 23:[], 24:[],
-    25:[{t:'Encerramento 2OU+',c:'especial',h:'20h'}],
-    26:[{t:'Estudo Bíblico para mulheres (online)',c:'estudo',h:'20h'}],
-    27:[{t:'Zadok Local',c:'zadok',h:'19h'}],
-    28:[{t:'Encerramento 2OU+ Influa e Jovens Casais',c:'especial',h:'17h'}],
-    29:[{t:'Culto | Super Seed',c:'especial',h:''}], 30:[]
-  },
-  12: {
-    1:[], 2:[{t:'FÉRIAS 2OU+',c:'ferias',h:''}], 3:[],
-    4:[{t:'Zadok local SC (especial)',c:'especial',h:''}],
-    5:[{t:'Zadok local SC (especial)',c:'especial',h:''}],
-    6:[{t:'Culto Ceia',c:'culto',h:'18h'}], 7:[], 8:[],
-    9:[{t:'FÉRIAS 2OU+',c:'ferias',h:''}], 10:[], 11:[],
-    12:[{t:'Culto Influa',c:'especial',h:'19h'}],
-    13:[{t:'Culto Natal',c:'especial',h:'18h'}], 14:[], 15:[],
-    16:[{t:'FÉRIAS 2OU+',c:'ferias',h:''}], 17:[], 18:[], 19:[],
-    20:[{t:'Culto',c:'culto',h:'18h'}], 21:[], 22:[],
-    23:[{t:'FÉRIAS 2OU+',c:'ferias',h:''}], 24:[], 25:[], 26:[],
-    27:[{t:'Culto',c:'culto',h:'18h'}], 28:[], 29:[],
-    30:[{t:'FÉRIAS 2OU+',c:'ferias',h:''}], 31:[]
-  }
-};
-
-let data = {};
-let realtimeDebounceTimer = null;
 
 function daysInMonth(month, year){ return new Date(year, month, 0).getDate(); }
 function firstWeekday(month, year){ return new Date(year, month-1, 1).getDay(); }
@@ -186,18 +84,28 @@ function emptyDataShape(){
   const obj = {};
   Object.keys(MONTH_NAMES).map(Number).forEach(m => {
     obj[m] = {};
-    const total = daysInMonth(m, CALENDAR_YEAR);
+    const total = daysInMonth(m, selectedYear);
     for(let d=1; d<=total; d++) obj[m][d] = [];
   });
   return obj;
 }
 
-function flattenData(d, source){
+// Usado pelo importBackup: converte o formato JSON de backup em linhas para inserção.
+// Preserva o campo year de cada evento; se ausente, usa 2026 (backups antigos).
+function flattenData(d){
   const rows = [];
   Object.keys(d).forEach(m => {
     Object.keys(d[m]).forEach(day => {
       d[m][day].forEach(ev => {
-        rows.push({ month:Number(m), day:Number(day), text:ev.t, category:ev.c, hour:ev.h || '', source: source || 'sheet' });
+        rows.push({
+          year: ev.year || 2026,
+          month: Number(m),
+          day: Number(day),
+          text: ev.t,
+          category: ev.c,
+          hour: ev.h || '',
+          source: 'manual'
+        });
       });
     });
   });
@@ -211,13 +119,19 @@ function setSaveStatus(text, ok){
 }
 
 function showError(show){ document.getElementById('errorWarning').style.display = show ? 'block' : 'none'; }
-function showSeedBanner(show){ document.getElementById('seedBanner').style.display = show ? 'block' : 'none'; }
+
+let data = {};
+let realtimeDebounceTimer = null;
 
 async function loadData(){
   if(!isConfigured) return;
   setSaveStatus('Sincronizando…', true);
   try{
-    const { data: rows, error } = await sb.from(TABLE).select('*').order('created_at', { ascending:true });
+    const { data: rows, error } = await sb
+      .from(TABLE)
+      .select('*')
+      .eq('year', selectedYear)
+      .order('created_at', { ascending:true });
     if(error) throw error;
     data = emptyDataShape();
     rows.forEach(r => {
@@ -225,7 +139,6 @@ async function loadData(){
       if(!data[r.month][r.day]) data[r.month][r.day] = [];
       data[r.month][r.day].push({ id:r.id, t:r.text, c:r.category, h:r.hour || '' });
     });
-    showSeedBanner(rows.length === 0);
     showError(false);
     setSaveStatus('Sincronizado ✓', true);
     render();
@@ -235,21 +148,10 @@ async function loadData(){
   }
 }
 
-async function seedAll(){
-  setSaveStatus('Carregando dados originais…', true);
-  try{
-    const rows = flattenData(DEFAULT_DATA);
-    const { error } = await sb.from(TABLE).insert(rows);
-    if(error) throw error;
-    await loadData();
-  }catch(e){
-    setSaveStatus('Erro ao carregar dados', false);
-    showError(true);
-  }
-}
-
+// Substitui TODOS os eventos do banco (todos os anos) com os dados do backup.
+// Usado pelo importBackup — ação destrutiva confirmada pelo usuário.
 async function replaceAllWithData(newDataShape){
-  setSaveStatus('Atualizando…', true);
+  setSaveStatus('Importando backup…', true);
   try{
     const { error: delError } = await sb.from(TABLE).delete().not('id','is',null);
     if(delError) throw delError;
@@ -260,24 +162,7 @@ async function replaceAllWithData(newDataShape){
     }
     await loadData();
   }catch(e){
-    setSaveStatus('Erro ao restaurar', false);
-    showError(true);
-  }
-}
-
-async function replaceMonthWithDefault(month){
-  setSaveStatus('Restaurando mês…', true);
-  try{
-    const { error: delError } = await sb.from(TABLE).delete().eq('month', month);
-    if(delError) throw delError;
-    const rows = flattenData({ [month]: DEFAULT_DATA[month] });
-    if(rows.length){
-      const { error: insError } = await sb.from(TABLE).insert(rows);
-      if(insError) throw insError;
-    }
-    await loadData();
-  }catch(e){
-    setSaveStatus('Erro ao restaurar mês', false);
+    setSaveStatus('Erro ao importar', false);
     showError(true);
   }
 }
@@ -285,7 +170,10 @@ async function replaceMonthWithDefault(month){
 async function addEvent(month, day, text, category, hour){
   setSaveStatus('Salvando…', true);
   try{
-    const { data: inserted, error } = await sb.from(TABLE).insert({ month, day, text, category, hour, source: 'manual' }).select().single();
+    const { data: inserted, error } = await sb
+      .from(TABLE)
+      .insert({ year: selectedYear, month, day, text, category, hour, source: 'manual' })
+      .select().single();
     if(error) throw error;
     await loadData();
     return inserted;
@@ -359,7 +247,6 @@ async function loadPendingChanges(){
     pendingChanges = rows || [];
     updatePendingBadge();
   }catch(e){
-    // tabela pode não existir ainda se o SQL de sync não foi rodado - falha silenciosa
     pendingChanges = [];
     updatePendingBadge();
   }
@@ -374,8 +261,10 @@ function updatePendingBadge(){
 
 async function approveChange(change){
   try{
+    const changeYear = change.year || 2026;
     if(change.change_type === 'add'){
       const { data: inserted, error } = await sb.from(TABLE).insert({
+        year: changeYear,
         month: change.month, day: change.day,
         text: change.new_text, category: change.new_category, hour: change.new_hour || '',
         source: 'sheet'
@@ -545,7 +434,7 @@ function importBackup(file){
   reader.onload = async (e) => {
     try{
       const parsed = JSON.parse(e.target.result);
-      if(!confirm('Importar este backup vai substituir TODOS os dados atuais do mural para todo mundo. Confirmar?')) return;
+      if(!confirm('Importar este backup vai substituir TODOS os dados atuais do mural para todo mundo (todos os anos). Confirmar?')) return;
       await replaceAllWithData(parsed);
       alert('Backup importado com sucesso!');
     }catch(err){
@@ -630,9 +519,9 @@ function buildUpcomingList(limit = 8){
 
   const flat = [];
   Object.keys(MONTH_NAMES).map(Number).forEach(month => {
-    const total = daysInMonth(month, CALENDAR_YEAR);
+    const total = daysInMonth(month, selectedYear);
     for(let d=1; d<=total; d++){
-      const dateObj = new Date(CALENDAR_YEAR, month-1, d);
+      const dateObj = new Date(selectedYear, month-1, d);
       const dayEvents = (data[month] && data[month][d]) || [];
       dayEvents.forEach((ev, idx) => {
         if(!activeFilters.has(ev.c)) return;
@@ -656,7 +545,7 @@ function renderUpcoming(){
   list.innerHTML = '';
 
   if(upcoming.length === 0){
-    list.innerHTML = '<div class="upcoming-empty">Nenhum evento futuro no período coberto por este mural (Julho–Dezembro).</div>';
+    list.innerHTML = '<div class="upcoming-empty">Nenhum evento futuro neste período.</div>';
     return;
   }
 
@@ -679,7 +568,6 @@ function renderUpcoming(){
   });
 }
 
-// ---------- Filtro de categorias (a legenda vira clicável) ----------
 // ---------- Identificação leve (sem login) para o histórico de alterações ----------
 const AUTHOR_STORAGE_KEY = 'poiema-mural-author-name';
 let authorName = localStorage.getItem(AUTHOR_STORAGE_KEY) || '';
@@ -701,8 +589,6 @@ function askAuthorName(){
   return authorName;
 }
 
-// Garante que existe um nome antes de uma ação que vai para o histórico.
-// Só pergunta na primeira vez (ou se a pessoa nunca respondeu).
 function ensureAuthorName(){
   if(authorName) return authorName;
   return askAuthorName() || 'Anônimo';
@@ -712,14 +598,17 @@ async function logActivity(action, { event_id, month, day, text, category }){
   if(!isConfigured) return;
   try{
     await sb.from('mural_activity_log').insert({
-      action, event_id, month, day, text, category,
+      action, event_id,
+      year: selectedYear, month, day,
+      text, category,
       author: ensureAuthorName()
     });
   }catch(e){
-    // Não bloqueia o uso do mural se o histórico falhar (ex: tabela não criada ainda)
+    // Não bloqueia o uso do mural se o histórico falhar
   }
 }
 
+// ---------- Filtro de categorias ----------
 const FILTER_STORAGE_KEY = 'poiema-mural-active-filters';
 let activeFilters = new Set(CAT_ORDER);
 loadFilterPreference();
@@ -733,13 +622,13 @@ function loadFilterPreference(){
         activeFilters = new Set(arr.filter(c => CAT_ORDER.includes(c)));
       }
     }
-  }catch(e){ /* localStorage indisponível — segue com tudo ativo */ }
+  }catch(e){}
 }
 
 function saveFilterPreference(){
   try{
     localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify([...activeFilters]));
-  }catch(e){ /* silencioso — é só uma preferência de exibição */ }
+  }catch(e){}
 }
 
 function toggleFilter(cat){
@@ -825,7 +714,8 @@ async function openActivityLog(){
       body.className = 'review-body';
       const dateLine = document.createElement('div');
       dateLine.className = 'review-date';
-      dateLine.textContent = (entry.month && entry.day) ? `${entry.day} de ${MONTH_NAMES[entry.month]}` : '';
+      const yearLabel = entry.year ? ` ${entry.year}` : '';
+      dateLine.textContent = (entry.month && entry.day) ? `${entry.day} de ${MONTH_NAMES[entry.month]}${yearLabel}` : '';
       const textLine = document.createElement('div');
       textLine.className = 'review-text';
       textLine.textContent = entry.text || '(sem descrição)';
@@ -853,7 +743,7 @@ const CAT_EMOJI = {
 function getCurrentWeekRange(){
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dow = today.getDay(); // 0 = domingo
+  const dow = today.getDay();
   const start = new Date(today); start.setDate(today.getDate() - dow);
   const end = new Date(start); end.setDate(start.getDate() + 6);
   return { start, end };
@@ -864,13 +754,13 @@ function buildWeekMessage(){
   const flat = [];
 
   Object.keys(MONTH_NAMES).map(Number).forEach(month => {
-    const total = daysInMonth(month, CALENDAR_YEAR);
+    const total = daysInMonth(month, selectedYear);
     for(let d=1; d<=total; d++){
-      const dateObj = new Date(CALENDAR_YEAR, month-1, d);
+      const dateObj = new Date(selectedYear, month-1, d);
       if(dateObj < start || dateObj > end) continue;
       const dayEvents = (data[month] && data[month][d]) || [];
       dayEvents.forEach(ev => {
-        if(!activeFilters.has(ev.c)) return; // respeita o filtro de categorias ativo
+        if(!activeFilters.has(ev.c)) return;
         flat.push({ month, day:d, dateObj, ev });
       });
     }
@@ -997,7 +887,7 @@ function openEditor(month, day, idx){
   pop.className = 'editor-pop';
 
   const title = document.createElement('h3');
-  title.textContent = `${isNew ? 'Novo evento' : 'Editar evento'} — ${day} de ${MONTH_NAMES[month]}`;
+  title.textContent = `${isNew ? 'Novo evento' : 'Editar evento'} — ${day} de ${MONTH_NAMES[month]} ${selectedYear}`;
   pop.appendChild(title);
 
   const descLabel = document.createElement('label');
@@ -1094,7 +984,7 @@ function openEditor(month, day, idx){
   textarea.focus();
 }
 
-// ---------- Painel "ver todos os eventos do dia" (quando há mais de 2) ----------
+// ---------- Painel "ver todos os eventos do dia" ----------
 function openDayOverview(month, day){
   const overlay = document.createElement('div');
   overlay.className = 'editor-overlay';
@@ -1104,7 +994,7 @@ function openDayOverview(month, day){
 
   const head = document.createElement('div');
   head.className = 'day-pop-head';
-  head.innerHTML = `<h3>${day} de ${MONTH_NAMES[month]}</h3>`;
+  head.innerHTML = `<h3>${day} de ${MONTH_NAMES[month]} ${selectedYear}</h3>`;
   const closeBtn = document.createElement('button');
   closeBtn.className = 'btn-cancel';
   closeBtn.style.cssText = 'font-family:Inter,sans-serif;font-weight:600;font-size:12px;border:none;border-radius:7px;padding:6px 10px;cursor:pointer;';
@@ -1144,8 +1034,6 @@ function openDayOverview(month, day){
   document.body.appendChild(overlay);
 }
 
-// Reorganiza o mural se a tela mudar de tamanho (ex: girar o celular),
-// já que o número de eventos visíveis por dia depende da largura.
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
@@ -1154,6 +1042,7 @@ window.addEventListener('resize', () => {
 
 function render(){
   renderLegend();
+  updateYearSelector();
   const board = document.getElementById('board');
   board.innerHTML = '';
 
@@ -1162,11 +1051,11 @@ function render(){
     card.className = 'month-card';
     card.id = `month-card-${month}`;
 
-    if(CALENDAR_YEAR < TODAY.year || (CALENDAR_YEAR === TODAY.year && month < TODAY.month)){
-      card.classList.add('month-past');
-    } else if(CALENDAR_YEAR === TODAY.year && month === TODAY.month){
-      card.classList.add('month-current');
-    }
+    // Mês passado: o mês/ano já ficou para trás do hoje
+    const isPast = selectedYear < TODAY.year || (selectedYear === TODAY.year && month < TODAY.month);
+    const isCurrent = selectedYear === TODAY.year && month === TODAY.month;
+    if(isPast) card.classList.add('month-past');
+    else if(isCurrent) card.classList.add('month-current');
 
     const tape = document.createElement('div');
     tape.className = 'tape';
@@ -1179,15 +1068,6 @@ function render(){
     const head = document.createElement('div');
     head.className = 'month-head';
     head.innerHTML = `<h2>${MONTH_NAMES[month]}</h2>`;
-    const restoreBtn = document.createElement('button');
-    restoreBtn.className = 'restore-btn';
-    restoreBtn.textContent = '↺ restaurar mês';
-    restoreBtn.onclick = () => {
-      if(confirm(`Restaurar ${MONTH_NAMES[month]} para os dados originais da planilha? Isso apaga as edições deste mês para todo mundo.`)){
-        replaceMonthWithDefault(month);
-      }
-    };
-    head.appendChild(restoreBtn);
     card.appendChild(head);
 
     const wk = document.createElement('div');
@@ -1198,9 +1078,8 @@ function render(){
     const grid = document.createElement('div');
     grid.className = 'days-grid';
 
-    const year = CALENDAR_YEAR;
-    const lead = firstWeekday(month, year);
-    const total = daysInMonth(month, year);
+    const lead = firstWeekday(month, selectedYear);
+    const total = daysInMonth(month, selectedYear);
 
     for(let i=0;i<lead;i++){
       const empty = document.createElement('div');
@@ -1211,7 +1090,7 @@ function render(){
     for(let d=1; d<=total; d++){
       const cell = document.createElement('div');
       cell.className = 'day-cell';
-      if(month === TODAY.month && d === TODAY.day && CALENDAR_YEAR === TODAY.year){
+      if(isCurrent && d === TODAY.day){
         cell.classList.add('today');
       }
 
@@ -1227,19 +1106,12 @@ function render(){
       if(!data[month][d]) data[month][d] = [];
       const dayEventsAll = data[month][d];
 
-      // Mantém o índice original de cada evento (necessário pra editar/excluir
-      // o evento certo depois), só filtrando quais aparecem no card compacto.
       const dayEventsVisible = dayEventsAll
         .map((ev, idx) => ({ ev, idx }))
         .filter(({ ev }) => activeFilters.has(ev.c));
 
-      // No celular a célula é mais baixa, então cabe só 1 evento por linha
-      // com folga — daí mostramos 1 e deixamos o "+N mais" cuidar do resto.
       const VISIBLE_LIMIT = window.innerWidth <= 640 ? 1 : 2;
       const shown = dayEventsVisible.slice(0, VISIBLE_LIMIT);
-      // Conta tanto o que passou do limite de espaço quanto o que está
-      // oculto por causa do filtro de categoria — nunca esconde de vez,
-      // sempre dá pra ver tudo clicando em "+N mais".
       const extraCount = dayEventsAll.length - shown.length;
 
       shown.forEach(({ ev, idx }) => {
@@ -1298,16 +1170,11 @@ document.getElementById('importFile').onchange = (e) => {
     e.target.value = '';
   }
 };
-document.getElementById('seedBtn').onclick = seedAll;
-
-document.getElementById('restoreAll').onclick = () => {
-  if(confirm('Restaurar TODO o mural para os dados originais extraídos da planilha? Isso apaga todos os dados atuais do banco para todo mundo.')){
-    replaceAllWithData(DEFAULT_DATA);
-  }
-};
+document.getElementById('yearPrev').onclick = () => changeYear(-1);
+document.getElementById('yearNext').onclick = () => changeYear(1);
 
 document.getElementById('addLegendInfo').onclick = () => {
-  alert('Como usar este mural:\n\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\n📅 Clique em "Assinar no meu calendário" para que os eventos apareçam automaticamente no seu Google Agenda, Apple Calendar ou Outlook — sempre atualizados, sem precisar voltar aqui.\n\n📋 Na primeira edição que você fizer, o mural pergunta como quer ser identificado (não é login, é só pra aparecer no histórico). Clique em "Histórico" pra ver quem alterou o quê e quando. Clique em "(trocar)" ao lado do seu nome se quiser mudar como aparece.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use os botões "restaurar" se quiser voltar aos dados originais da planilha (isso afeta todo mundo).');
+  alert('Como usar este mural:\n\n• Use ◀ ▶ no topo para alternar entre os anos disponíveis.\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\n📅 Clique em "Assinar no meu calendário" para que os eventos apareçam automaticamente no seu Google Agenda, Apple Calendar ou Outlook — sempre atualizados, sem precisar voltar aqui.\n\n📋 Na primeira edição que você fizer, o mural pergunta como quer ser identificado (não é login, é só pra aparecer no histórico). Clique em "Histórico" pra ver quem alterou o quê e quando. Clique em "(trocar)" ao lado do seu nome se quiser mudar como aparece.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use "Importar backup" para restaurar a partir de um arquivo .json exportado anteriormente.');
 };
 
 // ---------- Inicialização ----------
@@ -1316,10 +1183,10 @@ if(!isConfigured){
   setSaveStatus('Não configurado', false);
   data = emptyDataShape();
   renderLegend();
+  updateYearSelector();
 } else {
   loadData();
   loadPendingChanges();
-  // Sincronização em tempo real: qualquer mudança de qualquer pessoa recarrega o mural
   sb
     .channel('mural-events-changes')
     .on('postgres_changes', { event:'*', schema:'public', table: TABLE }, () => {
