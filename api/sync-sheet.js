@@ -189,9 +189,18 @@ const EDIT_SIMILARITY_THRESHOLD = 0.55;
 
 async function fetchSheetCSV() {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Falha ao buscar a planilha (HTTP ${res.status}). Verifique se ela ainda está com link público de visualização.`);
-  return await res.text();
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.text();
+    } catch (e) {
+      lastErr = e;
+      if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
+  throw new Error(`Falha ao buscar a planilha após 3 tentativas (${lastErr.message}). Verifique se ela está com link público de visualização.`);
 }
 
 // ---------- Localiza dinamicamente onde cada mês começa na grade ----------
@@ -229,7 +238,14 @@ function parseSheetData(rows) {
     throw new Error('Não encontrei os nomes dos meses (Julho, Agosto...) na planilha. O layout pode ter mudado — avise para ajustarmos o parser.');
   }
 
-  const result = {};
+  const EXPECTED_MONTHS = 6; // Julho a Dezembro
+  let parserWarning = null;
+  if (monthCols.length < EXPECTED_MONTHS) {
+    const found = monthCols.map(mc => Object.keys(MONTH_NUMBERS).find(n => MONTH_NUMBERS[n] === mc.month)).join(', ');
+    parserWarning = `Parser encontrou apenas ${monthCols.length} meses (${found}) em vez de ${EXPECTED_MONTHS}. O layout da planilha pode ter mudado.`;
+  }
+
+  const result = { _warning: parserWarning };
   monthCols.forEach(mc => { result[mc.month] = {}; });
 
   let emptyStreak = 0;
@@ -309,20 +325,6 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Se CRON_SECRET estiver configurado, só aceita chamadas do Vercel Cron
-  // (que envia esse header automaticamente) ou de dentro do próprio mural.
-  // Sem essa variável configurada, o endpoint fica aberto (como estava antes).
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = req.headers['authorization'] || '';
-    const isFromVercelCron = authHeader === `Bearer ${cronSecret}`;
-    const isFromMural = req.headers['x-mural-sync'] === cronSecret;
-    if (!isFromVercelCron && !isFromMural) {
-      res.status(401).json({ error: 'Não autorizado.' });
-      return;
-    }
-  }
-
   try {
     const csvText = await fetchSheetCSV();
     const rows = parseCSV(csvText);
@@ -332,8 +334,9 @@ module.exports = async (req, res) => {
     const sheetSourced = currentEvents.filter(e => e.source === 'sheet');
 
     const proposals = [];
+    const parserWarning = sheetData._warning;
 
-    Object.keys(sheetData).forEach(monthStr => {
+    Object.keys(sheetData).filter(k => k !== '_warning').forEach(monthStr => {
       const month = Number(monthStr);
       Object.keys(sheetData[month]).forEach(dayStr => {
         const day = Number(dayStr);
@@ -451,7 +454,8 @@ module.exports = async (req, res) => {
       ok: true,
       proposalsCount: proposals.length,
       newCount: toInsert.length,
-      staleRemoved: toDeleteIds.length
+      staleRemoved: toDeleteIds.length,
+      ...(parserWarning ? { warning: parserWarning } : {})
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
