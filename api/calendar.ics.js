@@ -156,10 +156,10 @@ module.exports = async (req, res) => {
     const header = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Poiema BNU//Murau Calendario 2026//PT-BR',
+      'PRODID:-//Poiema BNU//Mural Calendario 2026//PT-BR',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      'X-WR-CALNAME:Murau Poiema BNU 2026',
+      'X-WR-CALNAME:Mural Poiema BNU 2026',
       'X-WR-TIMEZONE:America/Sao_Paulo'
     ].map(foldLine).join('\r\n');
 
