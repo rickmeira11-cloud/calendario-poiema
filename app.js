@@ -145,6 +145,8 @@ async function loadData(){
         data[0][0].push({ id:r.id, t:r.text, c:r.category, h:'', banner_url: r.banner_url || null, banner_permanent: true });
         return;
       }
+      if(!data[r.month]) return;
+      if(!data[r.month][r.day]) data[r.month][r.day] = [];
       data[r.month][r.day].push({ id:r.id, t:r.text, c:r.category, h:r.hour || '', banner_url: r.banner_url || null, banner_permanent: false });
     });
     showError(false);
