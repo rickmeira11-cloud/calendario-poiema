@@ -130,7 +130,7 @@ async function loadData(){
     const { data: rows, error } = await sb
       .from(TABLE)
       .select('*')
-      .or(`year.eq.${selectedYear},banner_permanent.eq.true`)
+      .in('year', [selectedYear, 0])
       .order('created_at', { ascending:true });
     if(error) throw error;
     data = emptyDataShape();
