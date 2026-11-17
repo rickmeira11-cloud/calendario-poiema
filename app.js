@@ -137,7 +137,7 @@ async function loadData(){
     rows.forEach(r => {
       if(!data[r.month]) return;
       if(!data[r.month][r.day]) data[r.month][r.day] = [];
-      data[r.month][r.day].push({ id:r.id, t:r.text, c:r.category, h:r.hour || '' });
+      data[r.month][r.day].push({ id:r.id, t:r.text, c:r.category, h:r.hour || '', banner_url: r.banner_url || null });
     });
     showError(false);
     setSaveStatus('Sincronizado ✓', true);
@@ -167,12 +167,12 @@ async function replaceAllWithData(newDataShape){
   }
 }
 
-async function addEvent(month, day, text, category, hour){
+async function addEvent(month, day, text, category, hour, bannerUrl = null){
   setSaveStatus('Salvando…', true);
   try{
     const { data: inserted, error } = await sb
       .from(TABLE)
-      .insert({ year: selectedYear, month, day, text, category, hour, source: 'manual' })
+      .insert({ year: selectedYear, month, day, text, category, hour, source: 'manual', banner_url: bannerUrl })
       .select().single();
     if(error) throw error;
     await loadData();
@@ -184,10 +184,13 @@ async function addEvent(month, day, text, category, hour){
   }
 }
 
-async function updateEvent(id, text, category, hour){
+async function updateEvent(id, text, category, hour, bannerUrl = undefined){
   setSaveStatus('Salvando…', true);
   try{
-    const { error } = await sb.from(TABLE).update({ text, category, hour }).eq('id', id);
+    // bannerUrl=undefined → não toca no banner (preserve); null → limpa; string → atualiza
+    const fields = { text, category, hour };
+    if(bannerUrl !== undefined) fields.banner_url = bannerUrl;
+    const { error } = await sb.from(TABLE).update(fields).eq('id', id);
     if(error) throw error;
     await loadData();
   }catch(e){
@@ -206,6 +209,46 @@ async function deleteEvent(id){
     setSaveStatus('Erro ao excluir', false);
     showError(true);
   }
+}
+
+// ---------- Storage helpers (banner de evento) ----------
+// NOTA FUTURA: quando o sync apaga um evento via "remove", o objeto no bucket fica
+// órfão. Volume baixo (cada remoção via sync é rara, máx 3 MB por arquivo). Limpar
+// manualmente comparando bucket com banner_url em uso, quando/se incomodar.
+
+function isStorageBannerUrl(url){
+  return !!(url && url.includes('/storage/v1/object/public/event-banners/'));
+}
+
+function extractStoragePath(url){
+  const marker = '/event-banners/';
+  const idx = url.indexOf(marker);
+  if(idx === -1) return null;
+  return url.slice(idx + marker.length);
+}
+
+async function removeBannerFromStorage(url){
+  const path = extractStoragePath(url);
+  if(!path || !sb) return;
+  try{
+    await sb.storage.from('event-banners').remove([path]);
+  }catch(e){
+    // Não bloqueia: limpeza do Storage é melhor-esforço
+  }
+}
+
+async function uploadBanner(file){
+  const okTypes = ['image/jpeg','image/png','image/webp'];
+  if(!okTypes.includes(file.type)) throw new Error('Formato não suportado (use JPG, PNG ou WEBP).');
+  if(file.size > 3145728) throw new Error('Imagem muito grande (máx 3 MB).');
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await sb.storage.from('event-banners').upload(path, file, {
+    cacheControl: '3600', upsert: false
+  });
+  if(error) throw error;
+  const { data } = sb.storage.from('event-banners').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 // ---------- Sincronização com a planilha (sempre com aprovação manual) ----------
@@ -877,7 +920,7 @@ function renderLegend(){
 // ---------- Popover editor ----------
 function openEditor(month, day, idx){
   const isNew = (idx === null || idx === undefined);
-  const ev = isNew ? {t:'', c:'culto', h:''} : data[month][day][idx];
+  const ev = isNew ? {t:'', c:'culto', h:'', banner_url: null} : data[month][day][idx];
   let selectedCat = ev.c;
 
   const overlay = document.createElement('div');
@@ -928,6 +971,81 @@ function openEditor(month, day, idx){
   });
   pop.appendChild(catRow);
 
+  // --- Seção Banner ---
+  const bannerLabel = document.createElement('label');
+  bannerLabel.className = 'field-label';
+  bannerLabel.textContent = 'Banner / Arte do evento';
+  pop.appendChild(bannerLabel);
+
+  let pendingBannerUrl = ev.banner_url || null;
+  const originalBannerUrl = ev.banner_url || null;
+
+  const bannerPreview = document.createElement('div');
+  bannerPreview.className = 'banner-preview';
+
+  function refreshBannerPreview(){
+    bannerPreview.innerHTML = '';
+    if(pendingBannerUrl){
+      const img = document.createElement('img');
+      img.src = pendingBannerUrl;
+      img.alt = 'Preview do banner';
+      img.onerror = () => { bannerPreview.innerHTML = '<span class="banner-preview-error">Link não carregou — verifique a URL</span>'; };
+      bannerPreview.appendChild(img);
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'btn-banner-remove';
+      removeBtn.textContent = '✕ Remover banner';
+      removeBtn.type = 'button';
+      removeBtn.onclick = () => { pendingBannerUrl = null; refreshBannerPreview(); };
+      bannerPreview.appendChild(removeBtn);
+    } else {
+      bannerPreview.innerHTML = '<span class="banner-preview-empty">Nenhum banner</span>';
+    }
+  }
+  refreshBannerPreview();
+  pop.appendChild(bannerPreview);
+
+  const bannerUrlInput = document.createElement('input');
+  bannerUrlInput.type = 'url';
+  bannerUrlInput.className = 'banner-url-input';
+  bannerUrlInput.placeholder = 'Cole o link da imagem (https://...)';
+  bannerUrlInput.onchange = () => {
+    const val = bannerUrlInput.value.trim();
+    if(!val) return;
+    if(!/^https?:\/\/.+/i.test(val)){
+      alert('Cole uma URL válida começando com http:// ou https://');
+      return;
+    }
+    pendingBannerUrl = val;
+    bannerUrlInput.value = '';
+    refreshBannerPreview();
+  };
+  pop.appendChild(bannerUrlInput);
+
+  const bannerFileLabel = document.createElement('label');
+  bannerFileLabel.className = 'btn-banner-upload';
+  bannerFileLabel.textContent = '📁 Enviar imagem (JPG/PNG/WEBP, máx 3 MB)';
+  const bannerFileInput = document.createElement('input');
+  bannerFileInput.type = 'file';
+  bannerFileInput.accept = 'image/jpeg,image/png,image/webp';
+  bannerFileInput.style.display = 'none';
+  bannerFileInput.onchange = async () => {
+    const file = bannerFileInput.files[0];
+    if(!file) return;
+    bannerFileLabel.textContent = '⏳ Enviando…';
+    bannerFileLabel.style.pointerEvents = 'none';
+    try{
+      pendingBannerUrl = await uploadBanner(file);
+      refreshBannerPreview();
+    }catch(err){
+      alert('Erro ao enviar imagem: ' + err.message);
+    }
+    bannerFileLabel.textContent = '📁 Enviar imagem (JPG/PNG/WEBP, máx 3 MB)';
+    bannerFileLabel.style.pointerEvents = '';
+    bannerFileInput.value = '';
+  };
+  bannerFileLabel.appendChild(bannerFileInput);
+  pop.appendChild(bannerFileLabel);
+
   const actions = document.createElement('div');
   actions.className = 'editor-actions';
 
@@ -958,10 +1076,14 @@ function openEditor(month, day, idx){
     if(!txt){ document.body.removeChild(overlay); return; }
     document.body.removeChild(overlay);
     if(isNew){
-      const inserted = await addEvent(month, day, txt, selectedCat, hourTxt);
+      const inserted = await addEvent(month, day, txt, selectedCat, hourTxt, pendingBannerUrl);
       if(inserted) logActivity('add', { event_id: inserted.id, month, day, text: txt, category: selectedCat });
     } else {
-      await updateEvent(ev.id, txt, selectedCat, hourTxt);
+      // Se o banner foi removido e era um upload do nosso Storage, limpar o objeto
+      if(originalBannerUrl && !pendingBannerUrl && isStorageBannerUrl(originalBannerUrl)){
+        removeBannerFromStorage(originalBannerUrl);
+      }
+      await updateEvent(ev.id, txt, selectedCat, hourTxt, pendingBannerUrl);
       logActivity('edit', { event_id: ev.id, month, day, text: txt, category: selectedCat });
     }
   };
@@ -1034,6 +1156,155 @@ function openDayOverview(month, day){
   document.body.appendChild(overlay);
 }
 
+// ---------- Carrossel de banners ----------
+let carouselState = { slides: [], current: 0, timer: null };
+
+function buildBannerSlides(){
+  const todayMidnight = new Date(TODAY.year, TODAY.month - 1, TODAY.day);
+  const slides = [];
+  Object.keys(MONTH_NAMES).map(Number).forEach(month => {
+    const total = daysInMonth(month, selectedYear);
+    for(let d = 1; d <= total; d++){
+      const evList = (data[month] && data[month][d]) || [];
+      evList.forEach((ev, idx) => {
+        if(!ev.banner_url) return;
+        const dateObj = new Date(selectedYear, month - 1, d);
+        if(dateObj < todayMidnight) return;
+        slides.push({ ev, month, day: d, idx, dateObj });
+      });
+    }
+  });
+  slides.sort((a, b) => a.dateObj - b.dateObj);
+  return slides;
+}
+
+function goToSlide(idx){
+  const { slides } = carouselState;
+  if(!slides.length) return;
+  const newIdx = ((idx % slides.length) + slides.length) % slides.length;
+  const section = document.getElementById('bannerCarousel');
+  if(!section) return;
+  section.querySelectorAll('.carousel-slide').forEach((el, i) => {
+    el.classList.toggle('active', i === newIdx);
+  });
+  section.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i === newIdx);
+  });
+  carouselState.current = newIdx;
+}
+
+function startAutoPlay(){
+  if(carouselState.timer) return;
+  carouselState.timer = setInterval(() => goToSlide(carouselState.current + 1), 5000);
+}
+
+function pauseAutoPlay(){
+  if(carouselState.timer){ clearInterval(carouselState.timer); carouselState.timer = null; }
+}
+
+function renderCarousel(){
+  const section = document.getElementById('bannerCarousel');
+  if(!section) return;
+
+  pauseAutoPlay();
+  section.innerHTML = '';
+
+  const slides = buildBannerSlides();
+  carouselState.slides = slides;
+  carouselState.current = 0;
+
+  if(slides.length === 0){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+
+  const track = document.createElement('div');
+  track.className = 'carousel-track';
+
+  slides.forEach((slide, i) => {
+    const item = document.createElement('div');
+    item.className = 'carousel-slide' + (i === 0 ? ' active' : '');
+
+    const img = document.createElement('img');
+    img.className = 'carousel-img';
+    img.alt = slide.ev.t;
+    img.onerror = () => {
+      item.classList.add('carousel-slide-hidden');
+      if(item.classList.contains('active') && slides.length > 1){
+        goToSlide(carouselState.current + 1);
+      }
+    };
+    img.src = slide.ev.banner_url;
+
+    const caption = document.createElement('div');
+    caption.className = 'carousel-caption';
+    const wd = WEEKDAYS[slide.dateObj.getDay()];
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'carousel-event-name';
+    nameSpan.textContent = slide.ev.t;
+    const dateSpan = document.createElement('span');
+    dateSpan.className = 'carousel-event-date';
+    dateSpan.textContent = `${wd} ${pad2(slide.day)}/${pad2(slide.month)}`;
+    caption.appendChild(nameSpan);
+    caption.appendChild(dateSpan);
+    if(slide.ev.h){
+      const hourSpan = document.createElement('span');
+      hourSpan.className = 'carousel-event-hour';
+      hourSpan.textContent = slide.ev.h;
+      caption.appendChild(hourSpan);
+    }
+
+    item.appendChild(img);
+    item.appendChild(caption);
+    item.style.cursor = 'pointer';
+    item.title = 'Clique para editar este evento';
+    item.onclick = () => openEditor(slide.month, slide.day, slide.idx);
+    track.appendChild(item);
+  });
+
+  section.appendChild(track);
+
+  if(slides.length > 1){
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'carousel-btn carousel-btn-prev';
+    prevBtn.type = 'button';
+    prevBtn.setAttribute('aria-label', 'Slide anterior');
+    prevBtn.textContent = '❮';
+    prevBtn.onclick = (e) => { e.stopPropagation(); pauseAutoPlay(); goToSlide(carouselState.current - 1); };
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'carousel-btn carousel-btn-next';
+    nextBtn.type = 'button';
+    nextBtn.setAttribute('aria-label', 'Próximo slide');
+    nextBtn.textContent = '❯';
+    nextBtn.onclick = (e) => { e.stopPropagation(); pauseAutoPlay(); goToSlide(carouselState.current + 1); };
+
+    section.appendChild(prevBtn);
+    section.appendChild(nextBtn);
+
+    const dots = document.createElement('div');
+    dots.className = 'carousel-dots';
+    slides.forEach((_, i) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+      dot.setAttribute('aria-label', `Ir para slide ${i + 1}`);
+      dot.onclick = (e) => { e.stopPropagation(); pauseAutoPlay(); goToSlide(i); };
+      dots.appendChild(dot);
+    });
+    section.appendChild(dots);
+
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(!prefersReduced){ startAutoPlay(); }
+
+    section.addEventListener('mouseenter', pauseAutoPlay);
+    section.addEventListener('mouseleave', () => { if(!prefersReduced) startAutoPlay(); });
+    section.addEventListener('focusin', pauseAutoPlay);
+    section.addEventListener('focusout', () => { if(!prefersReduced) startAutoPlay(); });
+  }
+}
+
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
@@ -1041,6 +1312,7 @@ window.addEventListener('resize', () => {
 });
 
 function render(){
+  renderCarousel();
   renderLegend();
   updateYearSelector();
   const board = document.getElementById('board');
