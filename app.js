@@ -130,14 +130,22 @@ async function loadData(){
     const { data: rows, error } = await sb
       .from(TABLE)
       .select('*')
-      .eq('year', selectedYear)
+      .or(`year.eq.${selectedYear},banner_permanent.eq.true`)
       .order('created_at', { ascending:true });
     if(error) throw error;
     data = emptyDataShape();
     rows.forEach(r => {
       if(!data[r.month]) return;
       if(!data[r.month][r.day]) data[r.month][r.day] = [];
-      data[r.month][r.day].push({ id:r.id, t:r.text, c:r.category, h:r.hour || '', banner_url: r.banner_url || null });
+      const bp = r.banner_permanent === true;
+      // Entradas permanentes usam month=0/day=0 como sentinela — não vão pro grid
+      if(bp){
+        if(!data[0]) data[0] = {};
+        if(!data[0][0]) data[0][0] = [];
+        data[0][0].push({ id:r.id, t:r.text, c:r.category, h:'', banner_url: r.banner_url || null, banner_permanent: true });
+        return;
+      }
+      data[r.month][r.day].push({ id:r.id, t:r.text, c:r.category, h:r.hour || '', banner_url: r.banner_url || null, banner_permanent: false });
     });
     showError(false);
     setSaveStatus('Sincronizado ✓', true);
@@ -167,12 +175,13 @@ async function replaceAllWithData(newDataShape){
   }
 }
 
-async function addEvent(month, day, text, category, hour, bannerUrl = null){
+async function addEvent(month, day, text, category, hour, bannerUrl = null, bannerPermanent = false, yearOverride = null){
   setSaveStatus('Salvando…', true);
   try{
+    const yr = yearOverride !== null ? yearOverride : selectedYear;
     const { data: inserted, error } = await sb
       .from(TABLE)
-      .insert({ year: selectedYear, month, day, text, category, hour, source: 'manual', banner_url: bannerUrl })
+      .insert({ year: yr, month, day, text, category, hour, source: 'manual', banner_url: bannerUrl, banner_permanent: bannerPermanent })
       .select().single();
     if(error) throw error;
     await loadData();
@@ -184,12 +193,13 @@ async function addEvent(month, day, text, category, hour, bannerUrl = null){
   }
 }
 
-async function updateEvent(id, text, category, hour, bannerUrl = undefined){
+async function updateEvent(id, text, category, hour, bannerUrl = undefined, bannerPermanent = undefined){
   setSaveStatus('Salvando…', true);
   try{
     // bannerUrl=undefined → não toca no banner (preserve); null → limpa; string → atualiza
     const fields = { text, category, hour };
     if(bannerUrl !== undefined) fields.banner_url = bannerUrl;
+    if(bannerPermanent !== undefined) fields.banner_permanent = bannerPermanent;
     const { error } = await sb.from(TABLE).update(fields).eq('id', id);
     if(error) throw error;
     await loadData();
@@ -1161,7 +1171,10 @@ let carouselState = { slides: [], current: 0, timer: null };
 
 function buildBannerSlides(){
   const todayMidnight = new Date(TODAY.year, TODAY.month - 1, TODAY.day);
-  const slides = [];
+  const dated = [];
+  const permanent = [];
+
+  // Eventos com data futura
   Object.keys(MONTH_NAMES).map(Number).forEach(month => {
     const total = daysInMonth(month, selectedYear);
     for(let d = 1; d <= total; d++){
@@ -1170,12 +1183,20 @@ function buildBannerSlides(){
         if(!ev.banner_url) return;
         const dateObj = new Date(selectedYear, month - 1, d);
         if(dateObj < todayMidnight) return;
-        slides.push({ ev, month, day: d, idx, dateObj });
+        dated.push({ ev, month, day: d, idx, dateObj, permanent: false });
       });
     }
   });
-  slides.sort((a, b) => a.dateObj - b.dateObj);
-  return slides;
+  dated.sort((a, b) => a.dateObj - b.dateObj);
+
+  // Banners permanentes (recorrentes / institucionais)
+  const permList = (data[0] && data[0][0]) || [];
+  permList.forEach((ev, idx) => {
+    if(!ev.banner_url) return;
+    permanent.push({ ev, month: 0, day: 0, idx, dateObj: null, permanent: true });
+  });
+
+  return [...dated, ...permanent];
 }
 
 function goToSlide(idx){
@@ -1239,27 +1260,33 @@ function renderCarousel(){
 
     const caption = document.createElement('div');
     caption.className = 'carousel-caption';
-    const wd = WEEKDAYS[slide.dateObj.getDay()];
     const nameSpan = document.createElement('span');
     nameSpan.className = 'carousel-event-name';
     nameSpan.textContent = slide.ev.t;
-    const dateSpan = document.createElement('span');
-    dateSpan.className = 'carousel-event-date';
-    dateSpan.textContent = `${wd} ${pad2(slide.day)}/${pad2(slide.month)}`;
     caption.appendChild(nameSpan);
-    caption.appendChild(dateSpan);
-    if(slide.ev.h){
-      const hourSpan = document.createElement('span');
-      hourSpan.className = 'carousel-event-hour';
-      hourSpan.textContent = slide.ev.h;
-      caption.appendChild(hourSpan);
+    if(!slide.permanent && slide.dateObj){
+      const wd = WEEKDAYS[slide.dateObj.getDay()];
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'carousel-event-date';
+      dateSpan.textContent = `${wd} ${pad2(slide.day)}/${pad2(slide.month)}`;
+      caption.appendChild(dateSpan);
+      if(slide.ev.h){
+        const hourSpan = document.createElement('span');
+        hourSpan.className = 'carousel-event-hour';
+        hourSpan.textContent = slide.ev.h;
+        caption.appendChild(hourSpan);
+      }
     }
 
     item.appendChild(img);
     item.appendChild(caption);
-    item.style.cursor = 'pointer';
-    item.title = 'Clique para editar este evento';
-    item.onclick = () => openEditor(slide.month, slide.day, slide.idx);
+    if(slide.permanent){
+      item.style.cursor = 'default';
+    } else {
+      item.style.cursor = 'pointer';
+      item.title = 'Clique para editar este evento';
+      item.onclick = () => openEditor(slide.month, slide.day, slide.idx);
+    }
     track.appendChild(item);
   });
 
@@ -1303,6 +1330,189 @@ function renderCarousel(){
     section.addEventListener('focusin', pauseAutoPlay);
     section.addEventListener('focusout', () => { if(!prefersReduced) startAutoPlay(); });
   }
+}
+
+// ---------- Banners permanentes (recorrentes / institucionais) ----------
+
+function renderPermanentBannersList(container){
+  container.innerHTML = '';
+  const list = (data[0] && data[0][0]) || [];
+  if(list.length === 0){
+    const empty = document.createElement('p');
+    empty.style.cssText = 'color:#9C9890;font-size:13px;margin:0 0 12px;';
+    empty.textContent = 'Nenhum banner permanente cadastrado.';
+    container.appendChild(empty);
+    return;
+  }
+  list.forEach(ev => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #EFEDE6;';
+
+    if(ev.banner_url){
+      const thumb = document.createElement('img');
+      thumb.src = ev.banner_url;
+      thumb.style.cssText = 'width:64px;height:40px;object-fit:cover;border-radius:5px;flex-shrink:0;';
+      thumb.onerror = () => { thumb.style.display = 'none'; };
+      row.appendChild(thumb);
+    }
+
+    const name = document.createElement('span');
+    name.style.cssText = 'flex:1;font-size:13px;font-weight:600;color:#2B2A28;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    name.textContent = ev.t || '(sem nome)';
+    row.appendChild(name);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.style.cssText = 'flex-shrink:0;font-family:Inter,sans-serif;font-size:11px;font-weight:600;background:#EFEDE6;color:#555;border:none;border-radius:6px;padding:5px 9px;cursor:pointer;';
+    removeBtn.textContent = 'Remover';
+    removeBtn.onclick = async () => {
+      if(!confirm(`Remover banner "${ev.t}"?`)) return;
+      if(ev.banner_url && isStorageBannerUrl(ev.banner_url)) await removeBannerFromStorage(ev.banner_url);
+      await deleteEvent(ev.id);
+      renderPermanentBannersList(container);
+    };
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+  });
+}
+
+async function openPermanentBannersManager(){
+  const overlay = document.createElement('div');
+  overlay.className = 'editor-overlay';
+
+  const pop = document.createElement('div');
+  pop.className = 'review-pop';
+  pop.style.maxWidth = '520px';
+
+  const head = document.createElement('div');
+  head.className = 'review-head';
+  head.innerHTML = `<h3>🖼️ Banners permanentes</h3>`;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-cancel';
+  closeBtn.style.cssText = 'font-family:Inter,sans-serif;font-weight:600;font-size:12px;border:none;border-radius:7px;padding:6px 10px;cursor:pointer;';
+  closeBtn.textContent = 'Fechar';
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  head.appendChild(closeBtn);
+  pop.appendChild(head);
+
+  const body = document.createElement('div');
+  body.style.cssText = 'padding:16px 18px;';
+
+  const desc = document.createElement('p');
+  desc.style.cssText = 'font-size:12px;color:#9C9890;margin:0 0 14px;line-height:1.5;';
+  desc.textContent = 'Banners sem data de expiração — aparecem no carrossel após os eventos com data. Ficam ativos até você remover manualmente.';
+  body.appendChild(desc);
+
+  const listContainer = document.createElement('div');
+  renderPermanentBannersList(listContainer);
+  body.appendChild(listContainer);
+
+  // Formulário de adição
+  const addHead = document.createElement('p');
+  addHead.style.cssText = 'font-size:13px;font-weight:700;color:#2B2A28;margin:16px 0 8px;';
+  addHead.textContent = 'Adicionar banner permanente';
+  body.appendChild(addHead);
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Nome / identificação (ex: "Culto dominical")';
+  nameInput.style.cssText = 'width:100%;font-family:Inter,sans-serif;font-size:13px;padding:7px 10px;border:1.5px solid #D4CFC6;border-radius:8px;background:#FCFBF7;color:#2B2A28;box-sizing:border-box;margin-bottom:8px;';
+  body.appendChild(nameInput);
+
+  let pendingUrl = null;
+
+  // Preview
+  const preview = document.createElement('div');
+  preview.className = 'banner-preview';
+  const previewEmpty = document.createElement('span');
+  previewEmpty.className = 'banner-preview-empty';
+  previewEmpty.textContent = 'Nenhuma imagem selecionada.';
+  preview.appendChild(previewEmpty);
+  body.appendChild(preview);
+
+  function refreshPreview(){
+    preview.innerHTML = '';
+    if(!pendingUrl){ preview.appendChild(previewEmpty); return; }
+    const img = document.createElement('img');
+    img.src = pendingUrl;
+    img.onerror = () => { const e = document.createElement('span'); e.className='banner-preview-error'; e.textContent='Imagem não carregou.'; preview.innerHTML=''; preview.appendChild(e); };
+    preview.appendChild(img);
+    const rem = document.createElement('button');
+    rem.className = 'btn-banner-remove';
+    rem.textContent = '✕ Remover imagem';
+    rem.onclick = () => { pendingUrl = null; refreshPreview(); };
+    preview.appendChild(rem);
+  }
+
+  // URL input
+  const urlRow = document.createElement('div');
+  urlRow.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;';
+  const urlInput = document.createElement('input');
+  urlInput.type = 'url';
+  urlInput.placeholder = 'Colar URL da imagem (https://…)';
+  urlInput.className = 'banner-url-input';
+  urlInput.style.marginBottom = '0';
+  const urlBtn = document.createElement('button');
+  urlBtn.type = 'button';
+  urlBtn.textContent = 'Usar URL';
+  urlBtn.style.cssText = 'flex-shrink:0;font-family:Inter,sans-serif;font-size:12px;font-weight:600;background:#3A3E45;color:#F3F1EA;border:none;border-radius:7px;padding:7px 11px;cursor:pointer;';
+  urlBtn.onclick = () => {
+    const v = urlInput.value.trim();
+    if(!v.match(/^https?:\/\//i)){ alert('Use uma URL começando com https://'); return; }
+    pendingUrl = v;
+    urlInput.value = '';
+    refreshPreview();
+  };
+  urlRow.appendChild(urlInput);
+  urlRow.appendChild(urlBtn);
+  body.appendChild(urlRow);
+
+  // Upload
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/jpeg,image/png,image/webp';
+  fileInput.style.display = 'none';
+  const uploadLabel = document.createElement('label');
+  uploadLabel.className = 'btn-banner-upload';
+  uploadLabel.textContent = '⬆ Enviar imagem do computador';
+  uploadLabel.appendChild(fileInput);
+  fileInput.onchange = async () => {
+    if(!fileInput.files[0]) return;
+    uploadLabel.textContent = 'Enviando…';
+    try{
+      const url = await uploadBanner(fileInput.files[0]);
+      pendingUrl = url;
+      refreshPreview();
+    }catch(e){ alert(e.message); }
+    uploadLabel.textContent = '⬆ Enviar imagem do computador';
+    fileInput.value = '';
+  };
+  body.appendChild(uploadLabel);
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.style.cssText = 'display:block;width:100%;font-family:Inter,sans-serif;font-size:13px;font-weight:700;background:#2B2A28;color:#F3F1EA;border:none;border-radius:8px;padding:10px;cursor:pointer;margin-top:10px;';
+  addBtn.textContent = '+ Adicionar banner permanente';
+  addBtn.onclick = async () => {
+    const name = nameInput.value.trim();
+    if(!name){ alert('Informe um nome para o banner.'); return; }
+    if(!pendingUrl){ alert('Selecione ou cole uma imagem.'); return; }
+    addBtn.disabled = true;
+    addBtn.textContent = 'Salvando…';
+    // month=0, day=0, year=0 → sentinela para permanentes (independente do ano selecionado)
+    await addEvent(0, 0, name, 'especial', '', pendingUrl, true, 0);
+    nameInput.value = '';
+    pendingUrl = null;
+    refreshPreview();
+    addBtn.disabled = false;
+    addBtn.textContent = '+ Adicionar banner permanente';
+    renderPermanentBannersList(listContainer);
+  };
+  body.appendChild(addBtn);
+
+  pop.appendChild(body);
+  overlay.appendChild(pop);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) document.body.removeChild(overlay); });
+  document.body.appendChild(overlay);
 }
 
 let resizeTimer = null;
@@ -1432,6 +1642,7 @@ document.getElementById('activityLogBtn').onclick = openActivityLog;
 document.getElementById('shareWeekBtn').onclick = openShareWeekPanel;
 document.getElementById('changeAuthorLink').onclick = (e) => { e.preventDefault(); askAuthorName(); };
 updateAuthorLabel();
+document.getElementById('permanentBannersBtn').onclick = openPermanentBannersManager;
 document.getElementById('exportBtn').onclick = exportBackup;
 document.getElementById('syncBtn').onclick = triggerSync;
 document.getElementById('pendingBtn').onclick = openReviewPanel;
