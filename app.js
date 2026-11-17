@@ -1169,6 +1169,7 @@ function openDayOverview(month, day){
 
 // ---------- Carrossel de banners ----------
 let carouselState = { slides: [], current: 0, timer: null };
+let permanentBannersListEl = null; // referência ao container do modal, se aberto
 
 function buildBannerSlides(){
   const todayMidnight = new Date(TODAY.year, TODAY.month - 1, TODAY.day);
@@ -1391,7 +1392,8 @@ async function openPermanentBannersManager(){
   closeBtn.className = 'btn-cancel';
   closeBtn.style.cssText = 'font-family:Inter,sans-serif;font-weight:600;font-size:12px;border:none;border-radius:7px;padding:6px 10px;cursor:pointer;';
   closeBtn.textContent = 'Fechar';
-  closeBtn.onclick = () => document.body.removeChild(overlay);
+  const closeModal = () => { permanentBannersListEl = null; document.body.removeChild(overlay); };
+  closeBtn.onclick = closeModal;
   head.appendChild(closeBtn);
   pop.appendChild(head);
 
@@ -1404,6 +1406,7 @@ async function openPermanentBannersManager(){
   body.appendChild(desc);
 
   const listContainer = document.createElement('div');
+  permanentBannersListEl = listContainer;
   renderPermanentBannersList(listContainer);
   body.appendChild(listContainer);
 
@@ -1512,7 +1515,7 @@ async function openPermanentBannersManager(){
 
   pop.appendChild(body);
   overlay.appendChild(pop);
-  overlay.addEventListener('click', (e) => { if(e.target === overlay) document.body.removeChild(overlay); });
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
   document.body.appendChild(overlay);
 }
 
@@ -1524,6 +1527,7 @@ window.addEventListener('resize', () => {
 
 function render(){
   renderCarousel();
+  if(permanentBannersListEl) renderPermanentBannersList(permanentBannersListEl);
   renderLegend();
   updateYearSelector();
   const board = document.getElementById('board');
