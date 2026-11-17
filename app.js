@@ -138,11 +138,10 @@ async function loadData(){
       if(!data[r.month]) return;
       if(!data[r.month][r.day]) data[r.month][r.day] = [];
       const bp = r.banner_permanent === true;
-      // Entradas permanentes usam month=0/day=0 como sentinela — não vão pro grid
+      // Entradas permanentes ficam numa lista separada — não vão pro grid do mural
       if(bp){
-        if(!data[0]) data[0] = {};
-        if(!data[0][0]) data[0][0] = [];
-        data[0][0].push({ id:r.id, t:r.text, c:r.category, h:'', banner_url: r.banner_url || null, banner_permanent: true });
+        if(!data._permanent) data._permanent = [];
+        data._permanent.push({ id:r.id, t:r.text, c:r.category, h:'', banner_url: r.banner_url || null, banner_permanent: true });
         return;
       }
       if(!data[r.month]) return;
@@ -1192,7 +1191,7 @@ function buildBannerSlides(){
   dated.sort((a, b) => a.dateObj - b.dateObj);
 
   // Banners permanentes (recorrentes / institucionais)
-  const permList = (data[0] && data[0][0]) || [];
+  const permList = data._permanent || [];
   permList.forEach((ev, idx) => {
     if(!ev.banner_url) return;
     permanent.push({ ev, month: 0, day: 0, idx, dateObj: null, permanent: true });
@@ -1338,7 +1337,7 @@ function renderCarousel(){
 
 function renderPermanentBannersList(container){
   container.innerHTML = '';
-  const list = (data[0] && data[0][0]) || [];
+  const list = data._permanent || [];
   if(list.length === 0){
     const empty = document.createElement('p');
     empty.style.cssText = 'color:#9C9890;font-size:13px;margin:0 0 12px;';
@@ -1500,8 +1499,8 @@ async function openPermanentBannersManager(){
     if(!pendingUrl){ alert('Selecione ou cole uma imagem.'); return; }
     addBtn.disabled = true;
     addBtn.textContent = 'Salvando…';
-    // month=0, day=0, year=0 → sentinela para permanentes (independente do ano selecionado)
-    await addEvent(0, 0, name, 'especial', '', pendingUrl, true, 0);
+    // month=1, day=1, year=0 → sentinela para permanentes (month/day ignorados no carousel)
+    await addEvent(1, 1, name, 'especial', '', pendingUrl, true, 0);
     nameInput.value = '';
     pendingUrl = null;
     refreshPreview();
