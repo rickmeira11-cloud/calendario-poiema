@@ -532,26 +532,32 @@
 
   footer.note{
     max-width:1480px;
-    margin:30px auto 16px;
+    margin:30px auto 0;
     display:flex;
+    flex-direction:column;
     align-items:center;
-    justify-content:center;
-    gap:10px;
-    padding:16px 0;
+    gap:8px;
+    background:none;
+    border:none;
+    padding:20px 0;
     opacity:0.5;
   }
   footer.note:hover{ opacity:0.75; transition:opacity 0.2s; }
-  .footer-logo{
-    height:28px;
-    width:auto;
-    filter:invert(1);
-  }
   .footer-name{
+    order:1;
     font-family:'Poppins',sans-serif;
     font-weight:700;
-    font-size:13px;
-    letter-spacing:0.12em;
-    color:var(--ink);
+    font-size:12px;
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+    color:#F3F1EA;
+    background:none;
+  }
+  .footer-logo{
+    order:2;
+    height:32px;
+    width:auto;
+    filter:invert(1);
   }
 
   /* ---- Popover editor ---- */
