@@ -2253,7 +2253,7 @@ function render(){
 
       const VISIBLE_LIMIT = window.innerWidth <= 640 ? 1 : 2;
       const shown = dayEventsVisible.slice(0, VISIBLE_LIMIT);
-      const extraCount = dayEventsAll.length - shown.length;
+      const extraCount = dayEventsVisible.length - shown.length;
 
       shown.forEach(({ ev, idx }) => {
         const chip = document.createElement('div');
