@@ -1257,7 +1257,7 @@ function openEventDetail(month, day, idx){
     ev.h ? ['Horário', ev.h] : null,
     ev.location ? ['Localização', ev.location] : null,
     ev.notes ? ['Observação', ev.notes] : null,
-    ev.created_by ? ['Criado por', ev.created_by] : null,
+    // created_by omitido no modo leitura
   ].filter(Boolean);
 
   rows.forEach(([label, value]) => {
