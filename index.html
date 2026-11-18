@@ -24,6 +24,9 @@
       <span id="yearDisplay">2026</span>
       <button id="yearNext" type="button" aria-label="Próximo ano">▶</button>
     </div>
+    <select id="monthJump" aria-label="Ir para mês">
+      <option value="">Ir para mês…</option>
+    </select>
     <button id="addLegendInfo" type="button">ℹ️ Como usar</button>
     <button id="syncBtn" type="button">🔄 Verificar mudanças da planilha</button>
     <button id="pendingBtn" type="button" style="display:none; position:relative;">🔔 <span id="pendingCount">0</span> mudança(s) pendente(s)</button>
@@ -60,9 +63,8 @@
 <div class="board-grid" id="board"></div>
 
 <footer class="note">
-  Este mural usa Supabase como banco de dados compartilhado — qualquer pessoa que abrir este link vê e edita os mesmos
-  dados, com sincronização em tempo real entre todos. Use "Exportar backup" periodicamente para guardar uma cópia de
-  segurança em .json.
+  <img src="logo-poiema.png" alt="Poiema" class="footer-logo">
+  <span class="footer-name">POIEMA BLUMENAU</span>
 </footer>
 
 <script src="app.js"></script>

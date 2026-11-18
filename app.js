@@ -30,7 +30,7 @@ const CAT_LABEL = {
   feriado:'Feriado'
 };
 const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const MONTH_NAMES = {7:'Julho',8:'Agosto',9:'Setembro',10:'Outubro',11:'Novembro',12:'Dezembro'};
+const MONTH_NAMES = {1:'Janeiro',2:'Fevereiro',3:'Março',4:'Abril',5:'Maio',6:'Junho',7:'Julho',8:'Agosto',9:'Setembro',10:'Outubro',11:'Novembro',12:'Dezembro'};
 
 // Anos que o mural oferece. Para adicionar 2028, basta incluir aqui.
 const KNOWN_YEARS = [2026, 2027];
@@ -53,6 +53,20 @@ function updateYearSelector(){
   if(display) display.textContent = selectedYear;
   if(prev) prev.disabled = selectedYear <= KNOWN_YEARS[0];
   if(next) next.disabled = selectedYear >= KNOWN_YEARS[KNOWN_YEARS.length - 1];
+  populateMonthJump();
+}
+
+function populateMonthJump(){
+  const sel = document.getElementById('monthJump');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Ir para mês…</option>';
+  Object.keys(MONTH_NAMES).map(Number).forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = MONTH_NAMES[m];
+    sel.appendChild(opt);
+  });
+  sel.value = '';
 }
 
 function changeYear(delta){
@@ -1660,6 +1674,13 @@ document.getElementById('importFile').onchange = (e) => {
 };
 document.getElementById('yearPrev').onclick = () => changeYear(-1);
 document.getElementById('yearNext').onclick = () => changeYear(1);
+document.getElementById('monthJump').onchange = function(){
+  const m = parseInt(this.value, 10);
+  if(!m) return;
+  const target = document.getElementById(`month-card-${m}`);
+  if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+  this.value = '';
+};
 
 document.getElementById('addLegendInfo').onclick = () => {
   alert('Como usar este mural:\n\n• Use ◀ ▶ no topo para alternar entre os anos disponíveis.\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\n📅 Clique em "Assinar no meu calendário" para que os eventos apareçam automaticamente no seu Google Agenda, Apple Calendar ou Outlook — sempre atualizados, sem precisar voltar aqui.\n\n📋 Na primeira edição que você fizer, o mural pergunta como quer ser identificado (não é login, é só pra aparecer no histórico). Clique em "Histórico" pra ver quem alterou o quê e quando. Clique em "(trocar)" ao lado do seu nome se quiser mudar como aparece.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use "Importar backup" para restaurar a partir de um arquivo .json exportado anteriormente.');

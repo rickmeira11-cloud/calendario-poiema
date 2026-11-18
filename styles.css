@@ -108,6 +108,19 @@
     min-width:36px;
     text-align:center;
   }
+  #monthJump{
+    background:#3A3E45;
+    border:none;
+    border-radius:8px;
+    color:#F3F1EA;
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:500;
+    padding:6px 10px;
+    cursor:pointer;
+    height:32px;
+  }
+  #monthJump:focus{ outline:2px solid #6C9BD1; outline-offset:2px; }
   .toolbar button#pendingBtn{
     background:#C77D2B;
     color:#fff;
@@ -519,10 +532,26 @@
 
   footer.note{
     max-width:1480px;
-    margin:30px auto 0;
-    color:#8E8B82;
-    font-size:12px;
-    line-height:1.6;
+    margin:30px auto 16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding:16px 0;
+    opacity:0.5;
+  }
+  footer.note:hover{ opacity:0.75; transition:opacity 0.2s; }
+  .footer-logo{
+    height:28px;
+    width:auto;
+    filter:invert(1);
+  }
+  .footer-name{
+    font-family:'Poppins',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:0.12em;
+    color:var(--ink);
   }
 
   /* ---- Popover editor ---- */
