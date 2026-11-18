@@ -544,7 +544,7 @@
   }
   footer.note:hover{ opacity:0.75; transition:opacity 0.2s; }
   .footer-name{
-    order:1;
+    order:2;
     font-family:'Poppins',sans-serif;
     font-weight:700;
     font-size:12px;
@@ -554,7 +554,7 @@
     background:none;
   }
   .footer-logo{
-    order:2;
+    order:1;
     height:32px;
     width:auto;
     filter:invert(1);
