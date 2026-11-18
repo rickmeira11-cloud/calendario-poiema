@@ -1243,31 +1243,35 @@ function openEditor(month, day, idx){
   const pop = document.createElement('div');
   pop.className = 'editor-pop';
 
+  const body = document.createElement('div');
+  body.className = 'editor-pop-body';
+  pop.appendChild(body);
+
   const title = document.createElement('h3');
   title.textContent = `${isNew ? 'Novo evento' : 'Editar evento'} — ${day} de ${MONTH_NAMES[month]} ${selectedYear}`;
-  pop.appendChild(title);
+  body.appendChild(title);
 
   const descLabel = document.createElement('label');
   descLabel.className = 'field-label';
   descLabel.textContent = 'Descrição';
-  pop.appendChild(descLabel);
+  body.appendChild(descLabel);
 
   const textarea = document.createElement('textarea');
   textarea.value = ev.t;
   textarea.placeholder = 'Descrição do evento...';
-  pop.appendChild(textarea);
+  body.appendChild(textarea);
 
   const hourLabel = document.createElement('label');
   hourLabel.className = 'field-label';
   hourLabel.textContent = 'Horário';
-  pop.appendChild(hourLabel);
+  body.appendChild(hourLabel);
 
   const hourInput = document.createElement('input');
   hourInput.type = 'text';
   hourInput.className = 'hour-input';
   hourInput.value = ev.h || '';
   hourInput.placeholder = 'Ex: 18h, 13h30, 9h-12h...';
-  pop.appendChild(hourInput);
+  body.appendChild(hourInput);
 
   const catRow = document.createElement('div');
   catRow.className = 'cat-row';
@@ -1283,13 +1287,13 @@ function openEditor(month, day, idx){
     };
     catRow.appendChild(sw);
   });
-  pop.appendChild(catRow);
+  body.appendChild(catRow);
 
   // --- Seção Banner ---
   const bannerLabel = document.createElement('label');
   bannerLabel.className = 'field-label';
   bannerLabel.textContent = 'Banner / Arte do evento';
-  pop.appendChild(bannerLabel);
+  body.appendChild(bannerLabel);
 
   let pendingBannerUrl = ev.banner_url || null;
   const originalBannerUrl = ev.banner_url || null;
@@ -1316,7 +1320,7 @@ function openEditor(month, day, idx){
     }
   }
   refreshBannerPreview();
-  pop.appendChild(bannerPreview);
+  body.appendChild(bannerPreview);
 
   const bannerUrlInput = document.createElement('input');
   bannerUrlInput.type = 'url';
@@ -1333,7 +1337,7 @@ function openEditor(month, day, idx){
     bannerUrlInput.value = '';
     refreshBannerPreview();
   };
-  pop.appendChild(bannerUrlInput);
+  body.appendChild(bannerUrlInput);
 
   const bannerFileLabel = document.createElement('label');
   bannerFileLabel.className = 'btn-banner-upload';
@@ -1358,30 +1362,30 @@ function openEditor(month, day, idx){
     bannerFileInput.value = '';
   };
   bannerFileLabel.appendChild(bannerFileInput);
-  pop.appendChild(bannerFileLabel);
+  body.appendChild(bannerFileLabel);
 
   // --- Localização ---
   const locationLabel = document.createElement('label');
   locationLabel.className = 'field-label';
   locationLabel.textContent = 'Localização';
-  pop.appendChild(locationLabel);
+  body.appendChild(locationLabel);
   const locationInput = document.createElement('input');
   locationInput.type = 'text';
   locationInput.className = 'hour-input';
   locationInput.value = ev.location || '';
   locationInput.placeholder = 'Ex: Templo sede, Salão social…';
-  pop.appendChild(locationInput);
+  body.appendChild(locationInput);
 
   // --- Observação ---
   const notesLabel = document.createElement('label');
   notesLabel.className = 'field-label';
   notesLabel.textContent = 'Observação';
-  pop.appendChild(notesLabel);
+  body.appendChild(notesLabel);
   const notesArea = document.createElement('textarea');
   notesArea.value = ev.notes || '';
   notesArea.placeholder = 'Informações adicionais…';
   notesArea.rows = 2;
-  pop.appendChild(notesArea);
+  body.appendChild(notesArea);
 
   // --- Recorrência (somente para evento novo) ---
   let recurrenceFreq = 'none';
@@ -1430,7 +1434,7 @@ function openEditor(month, day, idx){
     endMonthSel.oninput = endMonthSel.onchange;
     endDayInput.oninput = endDayInput.onchange;
 
-    pop.appendChild(recRow);
+    body.appendChild(recRow);
   }
 
   // --- Criado por (somente ao editar) ---
@@ -1438,11 +1442,15 @@ function openEditor(month, day, idx){
     const createdByEl = document.createElement('div');
     createdByEl.style.cssText = 'font-size:11px;color:#9C9890;margin-top:4px;margin-bottom:4px;';
     createdByEl.textContent = 'Criado por ' + ev.created_by;
-    pop.appendChild(createdByEl);
+    body.appendChild(createdByEl);
   }
+
+  const foot = document.createElement('div');
+  foot.className = 'editor-pop-foot';
 
   const actions = document.createElement('div');
   actions.className = 'editor-actions';
+  actions.style.cssText = 'display:flex;gap:8px;width:100%;';
 
   if(!isNew){
     const delBtn = document.createElement('button');
@@ -1531,7 +1539,8 @@ function openEditor(month, day, idx){
   };
   actions.appendChild(saveBtn);
 
-  pop.appendChild(actions);
+  foot.appendChild(actions);
+  pop.appendChild(foot);
   overlay.appendChild(pop);
 
   overlay.addEventListener('click', (e) => {
