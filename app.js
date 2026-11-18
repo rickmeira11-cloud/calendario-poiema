@@ -7,7 +7,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // ============================================================
 
 const isConfigured = !SUPABASE_URL.includes('SUA_SUPABASE_URL_AQUI') && !SUPABASE_ANON_KEY.includes('SUA_SUPABASE_ANON_KEY_AQUI');
-const sb = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const sb = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { detectSessionInUrl: true, persistSession: true }
+}) : null;
 const TABLE = 'mural_events';
 const PENDING_TABLE = 'mural_pending_changes';
 
@@ -630,36 +632,141 @@ function renderUpcoming(){
     `;
     el.querySelector('.upcoming-text').textContent = item.ev.t;
     if(item.ev.h) el.querySelector('.upcoming-hour').textContent = item.ev.h;
-    el.title = 'Clique para editar';
-    el.onclick = () => openEditor(item.month, item.day, item.idx);
+    if(isEditor){
+      el.title = 'Clique para editar';
+      el.onclick = () => openEditor(item.month, item.day, item.idx);
+    }
     list.appendChild(el);
   });
 }
 
-// ---------- Identificação leve (sem login) para o histórico de alterações ----------
-const AUTHOR_STORAGE_KEY = 'poiema-mural-author-name';
-let authorName = localStorage.getItem(AUTHOR_STORAGE_KEY) || '';
+// ---------- Autenticação (Supabase Auth) ----------
+let isEditor = false;
+let currentUser = null;
 
-function updateAuthorLabel(){
-  const label = document.getElementById('authorLabel');
-  if(!label) return;
-  label.textContent = authorName ? `editando como ${authorName}` : 'identificar-se';
-}
+const EDITOR_ONLY_BTNS = ['syncBtn','pendingBtn','permanentBannersBtn','exportBtn','importBtn'];
 
-function askAuthorName(){
-  const current = authorName || '';
-  const name = prompt('Como você quer ser identificado nas edições deste mural?\n(aparece só no histórico de alterações, não é um login)', current);
-  if(name && name.trim()){
-    authorName = name.trim().slice(0, 40);
-    try{ localStorage.setItem(AUTHOR_STORAGE_KEY, authorName); }catch(e){}
+function updateAuthUI(){
+  const btn = document.getElementById('authBtn');
+  if(!btn) return;
+  btn.style.display = '';
+  if(isEditor && currentUser){
+    const name = currentUser.user_metadata?.full_name || currentUser.email || 'Editor';
+    btn.textContent = `👤 ${name} (Sair)`;
+  } else {
+    btn.textContent = '🔑 Entrar';
   }
-  updateAuthorLabel();
-  return authorName;
+  EDITOR_ONLY_BTNS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = isEditor ? '' : 'none';
+  });
 }
+
+function openLoginModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'editor-overlay';
+
+  const pop = document.createElement('div');
+  pop.className = 'editor-pop';
+  pop.style.maxWidth = '340px';
+
+  const title = document.createElement('h3');
+  title.style.cssText = 'margin:0 0 14px;font-family:Poppins,sans-serif;font-size:16px;';
+  title.textContent = 'Entrar no Mural';
+  pop.appendChild(title);
+
+  const emailInput = document.createElement('input');
+  emailInput.type = 'email';
+  emailInput.placeholder = 'E-mail';
+  emailInput.autocomplete = 'email';
+  emailInput.style.cssText = 'width:100%;font-family:Inter,sans-serif;font-size:14px;padding:8px 10px;border:1.5px solid #D4CFC6;border-radius:8px;background:#FCFBF7;color:#2B2A28;box-sizing:border-box;margin-bottom:8px;';
+  pop.appendChild(emailInput);
+
+  const passInput = document.createElement('input');
+  passInput.type = 'password';
+  passInput.placeholder = 'Senha';
+  passInput.autocomplete = 'current-password';
+  passInput.style.cssText = emailInput.style.cssText;
+  pop.appendChild(passInput);
+
+  const msgEl = document.createElement('p');
+  msgEl.style.cssText = 'font-size:12px;color:#C0392B;margin:0 0 8px;min-height:16px;';
+  pop.appendChild(msgEl);
+
+  const actions = document.createElement('div');
+  actions.className = 'editor-actions';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-cancel';
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.onclick = () => document.body.removeChild(overlay);
+  actions.appendChild(cancelBtn);
+
+  const loginBtn = document.createElement('button');
+  loginBtn.className = 'btn-save';
+  loginBtn.textContent = 'Entrar';
+  loginBtn.onclick = async () => {
+    const email = emailInput.value.trim();
+    const pass = passInput.value;
+    if(!email || !pass){ msgEl.textContent = 'Preencha e-mail e senha.'; return; }
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Entrando…';
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if(error){
+      msgEl.textContent = error.message || 'Erro ao entrar.';
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Entrar';
+    } else {
+      document.body.removeChild(overlay);
+    }
+  };
+  actions.appendChild(loginBtn);
+  pop.appendChild(actions);
+
+  const forgotLink = document.createElement('a');
+  forgotLink.href = '#';
+  forgotLink.style.cssText = 'display:block;text-align:center;font-size:12px;color:#9C9890;margin-top:10px;';
+  forgotLink.textContent = 'Esqueci a senha';
+  forgotLink.onclick = async (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+    if(!email){ msgEl.textContent = 'Informe o e-mail acima primeiro.'; return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email);
+    if(error){ msgEl.style.color = '#C0392B'; msgEl.textContent = error.message; }
+    else { msgEl.style.color = '#27AE60'; msgEl.textContent = 'Link de redefinição enviado para ' + email; }
+  };
+  pop.appendChild(forgotLink);
+
+  passInput.addEventListener('keydown', e => { if(e.key === 'Enter') loginBtn.click(); });
+  overlay.appendChild(pop);
+  document.body.appendChild(overlay);
+  setTimeout(() => emailInput.focus(), 50);
+}
+
+async function initAuth(){
+  if(!isConfigured || !sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    isEditor = true;
+  }
+  updateAuthUI();
+  sb.auth.onAuthStateChange((_event, session) => {
+    currentUser = session?.user || null;
+    isEditor = !!session;
+    updateAuthUI();
+    if(session) render(); // re-render para mostrar controles de edição
+  });
+}
+
+// ---------- Identificação leve (sem login) — mantida para compatibilidade ----------
+let authorName = '';
 
 function ensureAuthorName(){
-  if(authorName) return authorName;
-  return askAuthorName() || 'Anônimo';
+  if(currentUser){
+    return currentUser.user_metadata?.full_name || currentUser.email || 'Editor';
+  }
+  return 'Editor';
 }
 
 async function logActivity(action, { event_id, month, day, text, category }){
@@ -1157,24 +1264,30 @@ function openDayOverview(month, day){
     chip.className = 'day-pop-chip';
     chip.style.background = `var(--c-${ev.c})`;
     chip.innerHTML = escapeHtml(ev.t) + (ev.h ? `<span class="ev-hour">${escapeHtml(ev.h)}</span>` : '');
-    chip.onclick = () => {
-      document.body.removeChild(overlay);
-      openEditor(month, day, idx);
-    };
+    if(isEditor){
+      chip.onclick = () => {
+        document.body.removeChild(overlay);
+        openEditor(month, day, idx);
+      };
+    } else {
+      chip.style.cursor = 'default';
+    }
     list.appendChild(chip);
   });
   pop.appendChild(list);
 
-  const foot = document.createElement('div');
-  foot.className = 'day-pop-foot';
-  const addBtn = document.createElement('button');
-  addBtn.textContent = '+ adicionar evento';
-  addBtn.onclick = () => {
-    document.body.removeChild(overlay);
-    openEditor(month, day, null);
-  };
-  foot.appendChild(addBtn);
-  pop.appendChild(foot);
+  if(isEditor){
+    const foot = document.createElement('div');
+    foot.className = 'day-pop-foot';
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '+ adicionar evento';
+    addBtn.onclick = () => {
+      document.body.removeChild(overlay);
+      openEditor(month, day, null);
+    };
+    foot.appendChild(addBtn);
+    pop.appendChild(foot);
+  }
 
   overlay.appendChild(pop);
   overlay.addEventListener('click', (e) => { if(e.target === overlay) document.body.removeChild(overlay); });
@@ -1296,7 +1409,7 @@ function renderCarousel(){
 
     item.appendChild(img);
     item.appendChild(caption);
-    if(slide.permanent){
+    if(slide.permanent || !isEditor){
       item.style.cursor = 'default';
     } else {
       item.style.cursor = 'pointer';
@@ -1620,8 +1733,13 @@ function render(){
         chip.className = 'event-chip';
         chip.style.background = `var(--c-${ev.c})`;
         chip.textContent = ev.t;
-        chip.title = ev.t + (ev.h ? ' — ' + ev.h : '') + ' (clique para editar)';
-        chip.onclick = () => openEditor(month, d, idx);
+        if(isEditor){
+          chip.title = ev.t + (ev.h ? ' — ' + ev.h : '') + ' (clique para editar)';
+          chip.onclick = () => openEditor(month, d, idx);
+        } else {
+          chip.title = ev.t + (ev.h ? ' — ' + ev.h : '');
+          chip.style.cursor = 'default';
+        }
         wrap.appendChild(chip);
       });
 
@@ -1636,7 +1754,7 @@ function render(){
 
       cell.appendChild(wrap);
 
-      if(extraCount <= 0){
+      if(isEditor && extraCount <= 0){
         const addBtn = document.createElement('div');
         addBtn.className = 'add-btn';
         addBtn.textContent = '+';
@@ -1659,8 +1777,6 @@ function render(){
 document.getElementById('subscribeBtn').onclick = openSubscribePanel;
 document.getElementById('activityLogBtn').onclick = openActivityLog;
 document.getElementById('shareWeekBtn').onclick = openShareWeekPanel;
-document.getElementById('changeAuthorLink').onclick = (e) => { e.preventDefault(); askAuthorName(); };
-updateAuthorLabel();
 document.getElementById('permanentBannersBtn').onclick = openPermanentBannersManager;
 document.getElementById('exportBtn').onclick = exportBackup;
 document.getElementById('syncBtn').onclick = triggerSync;
@@ -1670,6 +1786,13 @@ document.getElementById('importFile').onchange = (e) => {
   if(e.target.files && e.target.files[0]){
     importBackup(e.target.files[0]);
     e.target.value = '';
+  }
+};
+document.getElementById('authBtn').onclick = async () => {
+  if(isEditor){
+    await sb.auth.signOut();
+  } else {
+    openLoginModal();
   }
 };
 document.getElementById('yearPrev').onclick = () => changeYear(-1);
@@ -1694,6 +1817,7 @@ if(!isConfigured){
   renderLegend();
   updateYearSelector();
 } else {
+  initAuth();
   loadData();
   loadPendingChanges();
   sb

@@ -14,6 +14,8 @@ const SHEET_YEAR = 2026;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+// Writes para mural_pending_changes requerem a service role key (RLS: somente autenticados podem gravar).
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const MONTH_NUMBERS = {
   'Julho': 7, 'Agosto': 8, 'Setembro': 9,
@@ -275,13 +277,15 @@ function parseSheetData(rows) {
 }
 
 // ---------- Helper para chamar a API REST do Supabase direto via fetch ----------
+// writes=true usa a service role key (necessário com RLS que restringe escritas a autenticados)
 async function supabaseRequest(path, options = {}) {
+  const key = options.writes ? SUPABASE_SERVICE_ROLE_KEY : SUPABASE_ANON_KEY;
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method: options.method || 'GET',
     body: options.body,
     headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': key,
+      'Authorization': `Bearer ${key}`,
       'Content-Type': 'application/json',
       'Prefer': options.prefer || 'return=representation',
     }
@@ -326,8 +330,8 @@ module.exports = async (req, res) => {
     res.status(405).json({ error: 'Método não permitido' });
     return;
   }
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    res.status(500).json({ error: 'Configure SUPABASE_URL e SUPABASE_ANON_KEY nas variáveis de ambiente do projeto na Vercel.' });
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+    res.status(500).json({ error: 'Configure SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente do projeto na Vercel.' });
     return;
   }
 
@@ -445,14 +449,16 @@ module.exports = async (req, res) => {
     if (toDeleteIds.length) {
       await supabaseRequest(`mural_pending_changes?id=in.(${toDeleteIds.join(',')})`, {
         method: 'DELETE',
-        prefer: 'return=minimal'
+        prefer: 'return=minimal',
+        writes: true
       });
     }
 
     if (toInsert.length) {
       await supabaseRequest('mural_pending_changes', {
         method: 'POST',
-        body: JSON.stringify(toInsert)
+        body: JSON.stringify(toInsert),
+        writes: true
       });
     }
 
