@@ -2259,7 +2259,7 @@ function render(){
         const chip = document.createElement('div');
         chip.className = 'event-chip' + (ev.recurrence_id ? ' event-chip-recurring' : '');
         chip.style.background = `var(--c-${ev.c})`;
-        chip.textContent = (ev.recurrence_id ? '🔁 ' : '') + ev.t;
+        chip.textContent = ev.t;
         if(isEditor){
           chip.title = ev.t + (ev.h ? ' — ' + ev.h : '') + ' (clique para editar)';
           chip.setAttribute('draggable', 'true');
