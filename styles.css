@@ -567,6 +567,30 @@
     width:auto;
     filter:invert(1);
   }
+  #backToTopBtn{
+    position:fixed;
+    bottom:28px;
+    right:28px;
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#3A3E45;
+    color:#F3F1EA;
+    border:none;
+    font-size:20px;
+    line-height:1;
+    cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.25s, transform 0.25s;
+    z-index:200;
+  }
+  #backToTopBtn.visible{
+    opacity:1;
+    pointer-events:auto;
+  }
+  #backToTopBtn:hover{ background:#4A5058; transform:translateY(-2px); }
 
   /* ---- Popover editor ---- */
   .editor-overlay{
