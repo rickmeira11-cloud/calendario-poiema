@@ -639,6 +639,10 @@ function renderUpcoming(){
     if(isEditor){
       el.title = 'Clique para editar';
       el.onclick = () => openEditor(item.month, item.day, item.idx);
+    } else {
+      el.title = 'Clique para ver detalhes';
+      el.style.cursor = 'pointer';
+      el.onclick = () => openEventDetail(item.month, item.day, item.idx);
     }
     list.appendChild(el);
   });
@@ -1231,6 +1235,73 @@ async function createRecurringSeries(month, day, text, category, hour, bannerUrl
   }
 }
 
+// ---------- Visualização de evento (modo leitura) ----------
+function openEventDetail(month, day, idx){
+  const ev = data[month][day][idx];
+  if(!ev) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'editor-overlay';
+  const pop = document.createElement('div');
+  pop.className = 'editor-pop';
+
+  const body = document.createElement('div');
+  body.className = 'editor-pop-body';
+  pop.appendChild(body);
+
+  const title = document.createElement('h3');
+  title.textContent = `${day} de ${MONTH_NAMES[month]} ${selectedYear}`;
+  body.appendChild(title);
+
+  const rows = [
+    ['Descrição', ev.t],
+    ev.h ? ['Horário', ev.h] : null,
+    ev.location ? ['Localização', ev.location] : null,
+    ev.notes ? ['Observação', ev.notes] : null,
+    ev.created_by ? ['Criado por', ev.created_by] : null,
+  ].filter(Boolean);
+
+  rows.forEach(([label, value]) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'field-label';
+    lbl.textContent = label;
+    body.appendChild(lbl);
+    const val = document.createElement('div');
+    val.style.cssText = 'font-size:13px;color:#2B2A28;margin-bottom:10px;white-space:pre-wrap;word-break:break-word;';
+    val.textContent = value;
+    body.appendChild(val);
+  });
+
+  if(ev.banner_url){
+    const img = document.createElement('img');
+    img.src = ev.banner_url;
+    img.alt = 'Banner';
+    img.style.cssText = 'width:100%;border-radius:8px;margin-top:4px;';
+    body.appendChild(img);
+  }
+
+  const catDot = document.createElement('div');
+  catDot.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c-${ev.c});margin-right:6px;vertical-align:middle;`;
+  const catLabel = document.createElement('div');
+  catLabel.style.cssText = 'font-size:12px;color:#6B6860;margin-top:8px;display:flex;align-items:center;';
+  catLabel.appendChild(catDot);
+  catLabel.appendChild(document.createTextNode(CAT_LABEL[ev.c] || ev.c));
+  body.appendChild(catLabel);
+
+  const foot = document.createElement('div');
+  foot.className = 'editor-pop-foot';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-save';
+  closeBtn.textContent = 'Fechar';
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  foot.appendChild(closeBtn);
+  pop.appendChild(foot);
+
+  overlay.appendChild(pop);
+  overlay.addEventListener('click', e => { if(e.target === overlay) document.body.removeChild(overlay); });
+  document.addEventListener('keydown', function esc(e){ if(e.key === 'Escape' && document.body.contains(overlay)){ document.body.removeChild(overlay); document.removeEventListener('keydown', esc); } });
+  document.body.appendChild(overlay);
+}
+
 // ---------- Popover editor ----------
 function openEditor(month, day, idx){
   const isNew = (idx === null || idx === undefined);
@@ -1589,7 +1660,11 @@ function openDayOverview(month, day){
         openEditor(month, day, idx);
       };
     } else {
-      chip.style.cursor = 'default';
+      chip.title = ev.t + (ev.h ? ' — ' + ev.h : '') + ' (clique para ver detalhes)';
+      chip.onclick = () => {
+        document.body.removeChild(overlay);
+        openEventDetail(month, day, idx);
+      };
     }
     list.appendChild(chip);
   });
@@ -2194,8 +2269,8 @@ function render(){
           chip.onclick = () => openEditor(month, d, idx);
           setupChipDrag(chip);
         } else {
-          chip.title = ev.t + (ev.h ? ' — ' + ev.h : '');
-          chip.style.cursor = 'default';
+          chip.title = ev.t + (ev.h ? ' — ' + ev.h : '') + ' (clique para ver detalhes)';
+          chip.onclick = () => openEventDetail(month, d, idx);
         }
         wrap.appendChild(chip);
       });
