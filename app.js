@@ -162,7 +162,7 @@ async function loadData(){
       }
       if(!data[r.month]) return;
       if(!data[r.month][r.day]) data[r.month][r.day] = [];
-      data[r.month][r.day].push({ id:r.id, t:r.text, c:r.category, h:r.hour || '', banner_url: r.banner_url || null, banner_permanent: false });
+      data[r.month][r.day].push({ id:r.id, t:r.text, c:r.category, h:r.hour || '', banner_url: r.banner_url || null, banner_permanent: false, location: r.location || '', notes: r.notes || '', created_by: r.created_by || '', recurrence_id: r.recurrence_id || null });
     });
     showError(false);
     setSaveStatus('Sincronizado ✓', true);
@@ -192,13 +192,13 @@ async function replaceAllWithData(newDataShape){
   }
 }
 
-async function addEvent(month, day, text, category, hour, bannerUrl = null, bannerPermanent = false, yearOverride = null){
+async function addEvent(month, day, text, category, hour, bannerUrl = null, bannerPermanent = false, yearOverride = null, location = null, notes = null, createdBy = null, recurrenceId = null){
   setSaveStatus('Salvando…', true);
   try{
     const yr = yearOverride !== null ? yearOverride : selectedYear;
     const { data: inserted, error } = await sb
       .from(TABLE)
-      .insert({ year: yr, month, day, text, category, hour, source: 'manual', banner_url: bannerUrl, banner_permanent: bannerPermanent })
+      .insert({ year: yr, month, day, text, category, hour, source: 'manual', banner_url: bannerUrl, banner_permanent: bannerPermanent, location: location || null, notes: notes || null, created_by: createdBy || null, recurrence_id: recurrenceId || null })
       .select().single();
     if(error) throw error;
     await loadData();
@@ -210,13 +210,17 @@ async function addEvent(month, day, text, category, hour, bannerUrl = null, bann
   }
 }
 
-async function updateEvent(id, text, category, hour, bannerUrl = undefined, bannerPermanent = undefined){
+async function updateEvent(id, text, category, hour, bannerUrl = undefined, bannerPermanent = undefined, location = undefined, notes = undefined, monthOverride = undefined, dayOverride = undefined){
   setSaveStatus('Salvando…', true);
   try{
-    // bannerUrl=undefined → não toca no banner (preserve); null → limpa; string → atualiza
+    // undefined → não toca no campo; null → limpa; valor → atualiza
     const fields = { text, category, hour };
     if(bannerUrl !== undefined) fields.banner_url = bannerUrl;
     if(bannerPermanent !== undefined) fields.banner_permanent = bannerPermanent;
+    if(location !== undefined) fields.location = location || null;
+    if(notes !== undefined) fields.notes = notes || null;
+    if(monthOverride !== undefined) fields.month = monthOverride;
+    if(dayOverride !== undefined) fields.day = dayOverride;
     const { error } = await sb.from(TABLE).update(fields).eq('id', id);
     if(error) throw error;
     await loadData();
@@ -769,14 +773,25 @@ function ensureAuthorName(){
   return 'Editor';
 }
 
-async function logActivity(action, { event_id, month, day, text, category }){
+function editorName(){
+  if(currentUser) return currentUser.user_metadata?.full_name || currentUser.email || 'Editor';
+  return 'Editor';
+}
+
+function evSnapshot(ev, month, day){
+  return { id: ev.id, text: ev.t, category: ev.c, hour: ev.h, month, day, year: selectedYear, location: ev.location || null, notes: ev.notes || null, banner_url: ev.banner_url || null, recurrence_id: ev.recurrence_id || null, created_by: ev.created_by || null };
+}
+
+async function logActivity(action, { event_id, month, day, text, category, snapshot_before = null, snapshot_after = null }){
   if(!isConfigured) return;
   try{
     await sb.from('mural_activity_log').insert({
       action, event_id,
       year: selectedYear, month, day,
       text, category,
-      author: ensureAuthorName()
+      author: ensureAuthorName(),
+      snapshot_before,
+      snapshot_after
     });
   }catch(e){
     // Não bloqueia o uso do mural se o histórico falhar
@@ -901,6 +916,23 @@ async function openActivityLog(){
       body.appendChild(textLine);
       body.appendChild(authorLine);
       item.appendChild(body);
+
+      if(isEditor){
+        const undoBtn = document.createElement('button');
+        undoBtn.textContent = 'Desfazer';
+        undoBtn.style.cssText = 'font-family:Inter,sans-serif;font-size:11px;font-weight:600;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;background:#E8E5DC;color:#555;white-space:nowrap;align-self:center;';
+        const hasSnap = entry.snapshot_before || entry.snapshot_after;
+        if(!hasSnap){ undoBtn.disabled = true; undoBtn.title = 'Entrada antiga sem snapshot'; undoBtn.style.opacity = '0.4'; }
+        undoBtn.onclick = async () => {
+          undoBtn.disabled = true;
+          undoBtn.textContent = '…';
+          await undoActivity(entry);
+          undoBtn.textContent = 'Desfazer';
+          undoBtn.disabled = false;
+        };
+        item.style.display = 'flex'; item.style.alignItems = 'flex-start'; item.style.gap = '8px';
+        item.appendChild(undoBtn);
+      }
 
       list.appendChild(item);
     });
@@ -1049,10 +1081,160 @@ function renderLegend(){
   });
 }
 
+// ---------- Helpers de recorrência / duplicar ----------
+function confirmRecurrenceEdit(){
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'editor-overlay';
+    const pop = document.createElement('div');
+    pop.className = 'editor-pop';
+    pop.style.maxWidth = '320px';
+    pop.innerHTML = '<h3 style="margin:0 0 12px;font-family:Poppins,sans-serif;font-size:15px;">Editar evento recorrente</h3><p style="font-size:13px;margin:0 0 14px;">Aplicar a alteração a:</p>';
+    const btn1 = document.createElement('button');
+    btn1.className = 'btn-save'; btn1.textContent = 'Só este evento';
+    btn1.style.cssText += 'display:block;width:100%;margin-bottom:8px;';
+    btn1.onclick = () => { document.body.removeChild(overlay); resolve('one'); };
+    const btn2 = document.createElement('button');
+    btn2.className = 'btn-save'; btn2.textContent = 'Toda a recorrência';
+    btn2.style.cssText += 'display:block;width:100%;margin-bottom:8px;background:#555;';
+    btn2.onclick = () => { document.body.removeChild(overlay); resolve('all'); };
+    const btnC = document.createElement('button');
+    btnC.className = 'btn-cancel'; btnC.textContent = 'Cancelar';
+    btnC.style.cssText += 'display:block;width:100%;';
+    btnC.onclick = () => { document.body.removeChild(overlay); resolve(null); };
+    pop.appendChild(btn1); pop.appendChild(btn2); pop.appendChild(btnC);
+    overlay.appendChild(pop);
+    document.body.appendChild(overlay);
+  });
+}
+
+function confirmRecurrenceDelete(text, count){
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'editor-overlay';
+    const pop = document.createElement('div');
+    pop.className = 'editor-pop';
+    pop.style.maxWidth = '320px';
+    pop.innerHTML = `<h3 style="margin:0 0 12px;font-family:Poppins,sans-serif;font-size:15px;">Excluir evento recorrente</h3><p style="font-size:13px;margin:0 0 14px;">Excluir "<b>${escapeHtml(text)}</b>":</p>`;
+    const btn1 = document.createElement('button');
+    btn1.className = 'btn-delete'; btn1.textContent = 'Só este evento';
+    btn1.style.cssText += 'display:block;width:100%;margin-bottom:8px;';
+    btn1.onclick = () => { document.body.removeChild(overlay); resolve('one'); };
+    const btn2 = document.createElement('button');
+    btn2.className = 'btn-delete'; btn2.textContent = `Toda a série (${count} eventos)`;
+    btn2.style.cssText += 'display:block;width:100%;margin-bottom:8px;';
+    btn2.onclick = () => { document.body.removeChild(overlay); resolve('all'); };
+    const btnC = document.createElement('button');
+    btnC.className = 'btn-cancel'; btnC.textContent = 'Cancelar';
+    btnC.style.cssText += 'display:block;width:100%;';
+    btnC.onclick = () => { document.body.removeChild(overlay); resolve(null); };
+    pop.appendChild(btn1); pop.appendChild(btn2); pop.appendChild(btnC);
+    overlay.appendChild(pop);
+    document.body.appendChild(overlay);
+  });
+}
+
+function openDuplicateModal(ev, origMonth, origDay){
+  const overlay = document.createElement('div');
+  overlay.className = 'editor-overlay';
+  const pop = document.createElement('div');
+  pop.className = 'editor-pop';
+  pop.style.maxWidth = '300px';
+  pop.innerHTML = `<h3 style="margin:0 0 12px;font-family:Poppins,sans-serif;font-size:15px;">Duplicar evento</h3><p style="font-size:12px;color:#6B6860;margin:0 0 10px;">Escolha a data de destino (ano: ${selectedYear})</p>`;
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:10px;';
+  const mSel = document.createElement('select');
+  mSel.style.cssText = 'flex:1;font-family:Inter,sans-serif;font-size:13px;padding:6px 8px;border:1.5px solid #D4CFC6;border-radius:8px;background:#FCFBF7;color:#2B2A28;';
+  Object.keys(MONTH_NAMES).map(Number).forEach(m => {
+    const o = document.createElement('option'); o.value = m; o.textContent = MONTH_NAMES[m]; mSel.appendChild(o);
+  });
+  mSel.value = origMonth;
+  const dInput = document.createElement('input');
+  dInput.type = 'number'; dInput.min = 1; dInput.max = 31; dInput.value = origDay;
+  dInput.style.cssText = 'width:56px;font-family:Inter,sans-serif;font-size:13px;padding:6px 8px;border:1.5px solid #D4CFC6;border-radius:8px;background:#FCFBF7;color:#2B2A28;';
+  row.appendChild(mSel); row.appendChild(dInput);
+  pop.appendChild(row);
+
+  // Atalho +1 semana
+  const weekBtn = document.createElement('button');
+  weekBtn.className = 'btn-cancel';
+  weekBtn.textContent = '+1 semana';
+  weekBtn.style.cssText += 'font-size:12px;padding:4px 10px;margin-bottom:10px;';
+  weekBtn.onclick = () => {
+    const d = new Date(selectedYear, origMonth - 1, origDay + 7);
+    mSel.value = d.getMonth() + 1;
+    dInput.value = d.getDate();
+  };
+  pop.appendChild(weekBtn);
+
+  const actions = document.createElement('div');
+  actions.className = 'editor-actions';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-cancel'; cancelBtn.textContent = 'Cancelar';
+  cancelBtn.onclick = () => document.body.removeChild(overlay);
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn-save'; confirmBtn.textContent = 'Duplicar';
+  confirmBtn.onclick = async () => {
+    const tgtMonth = Number(mSel.value);
+    const tgtDay = Number(dInput.value);
+    if(!tgtMonth || tgtDay < 1 || tgtDay > 31){ alert('Data inválida'); return; }
+    document.body.removeChild(overlay);
+    const inserted = await addEvent(tgtMonth, tgtDay, ev.t, ev.c, ev.h, ev.banner_url, false, null, ev.location, ev.notes, editorName(), null);
+    if(inserted) logActivity('add', { event_id: inserted.id, month: tgtMonth, day: tgtDay, text: ev.t, category: ev.c, snapshot_after: evSnapshot({...ev, id: inserted.id}, tgtMonth, tgtDay) });
+  };
+  actions.appendChild(cancelBtn); actions.appendChild(confirmBtn);
+  pop.appendChild(actions);
+  overlay.appendChild(pop);
+  document.body.appendChild(overlay);
+}
+
+function daysInMonthLocal(month, year){ return new Date(year, month, 0).getDate(); }
+
+async function createRecurringSeries(month, day, text, category, hour, bannerUrl, location, notes, freq, endMonth, endDay){
+  const recurrenceId = crypto.randomUUID();
+  const endDate = new Date(selectedYear, endMonth - 1, endDay);
+  const dates = [];
+  let cur = new Date(selectedYear, month - 1, day);
+  while(cur <= endDate){
+    dates.push({ m: cur.getMonth() + 1, d: cur.getDate() });
+    if(freq === 'weekly') cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7);
+    else if(freq === 'biweekly') cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 14);
+    else if(freq === 'monthly'){
+      let nm = cur.getMonth() + 1; let ny = cur.getFullYear();
+      nm++; if(nm > 12){ nm = 1; ny++; }
+      const maxD = daysInMonthLocal(nm, ny);
+      if(day > maxD){ cur = new Date(9999, 0, 1); } // pula mês sem o dia
+      else { cur = new Date(ny, nm - 1, day); }
+    }
+  }
+
+  if(dates.length === 0){ alert('Nenhuma data gerada — verifique o intervalo.'); return; }
+
+  const rows = dates.map(({m, d}) => ({
+    year: selectedYear, month: m, day: d, text, category, hour,
+    source: 'manual', banner_url: bannerUrl || null,
+    banner_permanent: false, location: location || null,
+    notes: notes || null, created_by: editorName(),
+    recurrence_id: recurrenceId
+  }));
+
+  setSaveStatus('Salvando série…', true);
+  try{
+    const { error } = await sb.from(TABLE).insert(rows);
+    if(error) throw error;
+    await loadData();
+    logActivity('add', { event_id: null, month, day, text: `Série: ${text} (${dates.length} ocorrências)`, category, snapshot_after: { recurrence_id: recurrenceId, count: dates.length, freq } });
+  }catch(e){
+    setSaveStatus('Erro ao criar série', false);
+    alert('Erro ao criar série recorrente: ' + e.message);
+  }
+}
+
 // ---------- Popover editor ----------
 function openEditor(month, day, idx){
   const isNew = (idx === null || idx === undefined);
-  const ev = isNew ? {t:'', c:'culto', h:'', banner_url: null} : data[month][day][idx];
+  const ev = isNew ? {t:'', c:'culto', h:'', banner_url: null, location:'', notes:'', created_by:'', recurrence_id:null} : data[month][day][idx];
   let selectedCat = ev.c;
 
   const overlay = document.createElement('div');
@@ -1178,6 +1360,87 @@ function openEditor(month, day, idx){
   bannerFileLabel.appendChild(bannerFileInput);
   pop.appendChild(bannerFileLabel);
 
+  // --- Localização ---
+  const locationLabel = document.createElement('label');
+  locationLabel.className = 'field-label';
+  locationLabel.textContent = 'Localização';
+  pop.appendChild(locationLabel);
+  const locationInput = document.createElement('input');
+  locationInput.type = 'text';
+  locationInput.className = 'hour-input';
+  locationInput.value = ev.location || '';
+  locationInput.placeholder = 'Ex: Templo sede, Salão social…';
+  pop.appendChild(locationInput);
+
+  // --- Observação ---
+  const notesLabel = document.createElement('label');
+  notesLabel.className = 'field-label';
+  notesLabel.textContent = 'Observação';
+  pop.appendChild(notesLabel);
+  const notesArea = document.createElement('textarea');
+  notesArea.value = ev.notes || '';
+  notesArea.placeholder = 'Informações adicionais…';
+  notesArea.rows = 2;
+  pop.appendChild(notesArea);
+
+  // --- Recorrência (somente para evento novo) ---
+  let recurrenceFreq = 'none';
+  let recurrenceEndMonth = month;
+  let recurrenceEndDay = day;
+  if(isNew){
+    const recLabel = document.createElement('label');
+    recLabel.className = 'field-label';
+    recLabel.textContent = 'Repetir';
+    pop.appendChild(recLabel);
+
+    const recRow = document.createElement('div');
+    recRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;';
+
+    const freqSel = document.createElement('select');
+    freqSel.style.cssText = 'font-family:Inter,sans-serif;font-size:13px;padding:6px 8px;border:1.5px solid #D4CFC6;border-radius:8px;background:#FCFBF7;color:#2B2A28;';
+    [['none','Não repete'],['weekly','Semanal (a cada 7 dias)'],['biweekly','Quinzenal (a cada 14 dias)'],['monthly','Mensal (mesmo dia)']].forEach(([v,l]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = l; freqSel.appendChild(o);
+    });
+    recRow.appendChild(freqSel);
+
+    const endWrap = document.createElement('div');
+    endWrap.style.cssText = 'display:none;align-items:center;gap:6px;';
+    endWrap.innerHTML = '<span style="font-size:12px;color:#6B6860;">até</span>';
+
+    const endMonthSel = document.createElement('select');
+    endMonthSel.style.cssText = freqSel.style.cssText;
+    Object.keys(MONTH_NAMES).map(Number).forEach(m => {
+      const o = document.createElement('option'); o.value = m; o.textContent = MONTH_NAMES[m]; endMonthSel.appendChild(o);
+    });
+    endMonthSel.value = month;
+    const endDayInput = document.createElement('input');
+    endDayInput.type = 'number'; endDayInput.min = 1; endDayInput.max = 31;
+    endDayInput.value = day;
+    endDayInput.style.cssText = 'width:52px;font-family:Inter,sans-serif;font-size:13px;padding:6px 8px;border:1.5px solid #D4CFC6;border-radius:8px;background:#FCFBF7;color:#2B2A28;';
+    endWrap.appendChild(endMonthSel);
+    endWrap.appendChild(endDayInput);
+    recRow.appendChild(endWrap);
+
+    freqSel.onchange = () => {
+      recurrenceFreq = freqSel.value;
+      endWrap.style.display = recurrenceFreq === 'none' ? 'none' : 'flex';
+    };
+    endMonthSel.onchange = () => { recurrenceEndMonth = Number(endMonthSel.value); };
+    endDayInput.onchange = () => { recurrenceEndDay = Number(endDayInput.value); };
+    endMonthSel.oninput = endMonthSel.onchange;
+    endDayInput.oninput = endDayInput.onchange;
+
+    pop.appendChild(recRow);
+  }
+
+  // --- Criado por (somente ao editar) ---
+  if(!isNew && ev.created_by){
+    const createdByEl = document.createElement('div');
+    createdByEl.style.cssText = 'font-size:11px;color:#9C9890;margin-top:4px;margin-bottom:4px;';
+    createdByEl.textContent = 'Criado por ' + ev.created_by;
+    pop.appendChild(createdByEl);
+  }
+
   const actions = document.createElement('div');
   actions.className = 'editor-actions';
 
@@ -1186,11 +1449,40 @@ function openEditor(month, day, idx){
     delBtn.className = 'btn-delete';
     delBtn.textContent = 'Excluir';
     delBtn.onclick = async () => {
+      if(ev.recurrence_id){
+        // Busca quantos eventos tem na série
+        const { data: seriesEvs } = await sb.from(TABLE).select('id,month,day').eq('recurrence_id', ev.recurrence_id);
+        const n = seriesEvs ? seriesEvs.length : '?';
+        const choice = await confirmRecurrenceDelete(ev.t, n);
+        if(choice === null) return; // cancelou
+        document.body.removeChild(overlay);
+        const before = evSnapshot(ev, month, day);
+        if(choice === 'all'){
+          const { error } = await sb.from(TABLE).delete().eq('recurrence_id', ev.recurrence_id);
+          if(!error){ logActivity('delete', { event_id: ev.id, month, day, text: ev.t, category: ev.c, snapshot_before: before }); await loadData(); }
+        } else {
+          await deleteEvent(ev.id);
+          logActivity('delete', { event_id: ev.id, month, day, text: ev.t, category: ev.c, snapshot_before: before });
+        }
+        return;
+      }
       document.body.removeChild(overlay);
+      const before = evSnapshot(ev, month, day);
       await deleteEvent(ev.id);
-      logActivity('delete', { event_id: ev.id, month, day, text: ev.t, category: ev.c });
+      logActivity('delete', { event_id: ev.id, month, day, text: ev.t, category: ev.c, snapshot_before: before });
     };
     actions.appendChild(delBtn);
+
+    // Botão Duplicar
+    const dupBtn = document.createElement('button');
+    dupBtn.className = 'btn-cancel';
+    dupBtn.textContent = 'Duplicar';
+    dupBtn.style.marginLeft = 'auto';
+    dupBtn.onclick = () => {
+      document.body.removeChild(overlay);
+      openDuplicateModal(ev, month, day);
+    };
+    actions.appendChild(dupBtn);
   }
 
   const cancelBtn = document.createElement('button');
@@ -1205,18 +1497,36 @@ function openEditor(month, day, idx){
   saveBtn.onclick = async () => {
     const txt = textarea.value.trim();
     const hourTxt = hourInput.value.trim();
+    const locTxt = locationInput.value.trim();
+    const notesTxt = notesArea.value.trim();
     if(!txt){ document.body.removeChild(overlay); return; }
     document.body.removeChild(overlay);
     if(isNew){
-      const inserted = await addEvent(month, day, txt, selectedCat, hourTxt, pendingBannerUrl);
-      if(inserted) logActivity('add', { event_id: inserted.id, month, day, text: txt, category: selectedCat });
-    } else {
-      // Se o banner foi removido e era um upload do nosso Storage, limpar o objeto
-      if(originalBannerUrl && !pendingBannerUrl && isStorageBannerUrl(originalBannerUrl)){
-        removeBannerFromStorage(originalBannerUrl);
+      if(recurrenceFreq !== 'none'){
+        await createRecurringSeries(month, day, txt, selectedCat, hourTxt, pendingBannerUrl, locTxt, notesTxt, recurrenceFreq, recurrenceEndMonth, recurrenceEndDay);
+        return;
       }
-      await updateEvent(ev.id, txt, selectedCat, hourTxt, pendingBannerUrl);
-      logActivity('edit', { event_id: ev.id, month, day, text: txt, category: selectedCat });
+      const inserted = await addEvent(month, day, txt, selectedCat, hourTxt, pendingBannerUrl, false, null, locTxt, notesTxt, editorName());
+      if(inserted) logActivity('add', { event_id: inserted.id, month, day, text: txt, category: selectedCat, snapshot_after: evSnapshot({...ev, id: inserted.id, t: txt, c: selectedCat, h: hourTxt, location: locTxt, notes: notesTxt, created_by: editorName()}, month, day) });
+    } else {
+      if(ev.recurrence_id){
+        const choice = await confirmRecurrenceEdit();
+        if(choice === null) return;
+        if(originalBannerUrl && !pendingBannerUrl && isStorageBannerUrl(originalBannerUrl)) removeBannerFromStorage(originalBannerUrl);
+        const before = evSnapshot(ev, month, day);
+        if(choice === 'all'){
+          const { error } = await sb.from(TABLE).update({ text: txt, category: selectedCat, hour: hourTxt, location: locTxt || null, notes: notesTxt || null }).eq('recurrence_id', ev.recurrence_id);
+          if(!error){ await loadData(); logActivity('edit', { event_id: ev.id, month, day, text: txt, category: selectedCat, snapshot_before: before, snapshot_after: evSnapshot({...ev, t:txt, c:selectedCat, h:hourTxt, location:locTxt, notes:notesTxt}, month, day) }); }
+        } else {
+          await updateEvent(ev.id, txt, selectedCat, hourTxt, pendingBannerUrl, undefined, locTxt, notesTxt);
+          logActivity('edit', { event_id: ev.id, month, day, text: txt, category: selectedCat, snapshot_before: before, snapshot_after: evSnapshot({...ev, t:txt, c:selectedCat, h:hourTxt, location:locTxt, notes:notesTxt}, month, day) });
+        }
+        return;
+      }
+      if(originalBannerUrl && !pendingBannerUrl && isStorageBannerUrl(originalBannerUrl)) removeBannerFromStorage(originalBannerUrl);
+      const before = evSnapshot(ev, month, day);
+      await updateEvent(ev.id, txt, selectedCat, hourTxt, pendingBannerUrl, undefined, locTxt, notesTxt);
+      logActivity('edit', { event_id: ev.id, month, day, text: txt, category: selectedCat, snapshot_before: before, snapshot_after: evSnapshot({...ev, t:txt, c:selectedCat, h:hourTxt, location:locTxt, notes:notesTxt}, month, day) });
     }
   };
   actions.appendChild(saveBtn);
@@ -1652,6 +1962,135 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(render, 250);
 });
 
+// ---------- Arrastar card para outra data ----------
+let dragState = null; // { chip, evMonth, evDay, evIdx, startX, startY, clone, active }
+
+function setupChipDrag(chip){
+  chip.addEventListener('pointerdown', onChipPointerDown);
+}
+
+function onChipPointerDown(e){
+  if(e.button !== 0 && e.pointerType === 'mouse') return;
+  const chip = e.currentTarget;
+  const startX = e.clientX, startY = e.clientY;
+  let longPressTimer = null;
+  let moved = false;
+
+  function startDrag(){
+    dragState = {
+      chip,
+      evMonth: Number(chip.dataset.evMonth),
+      evDay: Number(chip.dataset.evDay),
+      evIdx: Number(chip.dataset.evIdx),
+      active: true
+    };
+    chip.style.opacity = '0.4';
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', onDragEnd);
+  }
+
+  function onMove(e2){
+    const dx = Math.abs(e2.clientX - startX), dy = Math.abs(e2.clientY - startY);
+    if(dx > 8 || dy > 8){ moved = true; clearTimeout(longPressTimer); }
+  }
+
+  function onUp(){ clearTimeout(longPressTimer); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); }
+
+  longPressTimer = setTimeout(() => {
+    if(!moved) startDrag();
+  }, 400);
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+function onDragMove(e){
+  if(!dragState || !dragState.active) return;
+  // Highlight cell under pointer
+  document.querySelectorAll('.day-cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const cell = el && el.closest('[data-drop-month]');
+  if(cell) cell.classList.add('drag-over');
+}
+
+async function onDragEnd(e){
+  if(!dragState || !dragState.active){ dragState = null; return; }
+  document.removeEventListener('pointermove', onDragMove);
+  document.removeEventListener('pointerup', onDragEnd);
+  document.querySelectorAll('.day-cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+  dragState.chip.style.opacity = '';
+
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const cell = el && el.closest('[data-drop-month]');
+  const { evMonth, evDay, evIdx } = dragState;
+  dragState = null;
+
+  if(!cell) return;
+  const tgtMonth = Number(cell.dataset.dropMonth);
+  const tgtDay = Number(cell.dataset.dropDay);
+  if(tgtMonth === evMonth && tgtDay === evDay) return;
+
+  const ev = data[evMonth] && data[evMonth][evDay] && data[evMonth][evDay][evIdx];
+  if(!ev) return;
+
+  const confirmed = confirm(`Mover "${ev.t}" de ${evDay}/${evMonth} para ${tgtDay}/${tgtMonth}?`);
+  if(!confirmed) return;
+
+  const before = evSnapshot(ev, evMonth, evDay);
+  await updateEvent(ev.id, ev.t, ev.c, ev.h, undefined, undefined, undefined, undefined, tgtMonth, tgtDay);
+  logActivity('edit', { event_id: ev.id, month: tgtMonth, day: tgtDay, text: ev.t, category: ev.c, snapshot_before: before, snapshot_after: evSnapshot({...ev}, tgtMonth, tgtDay) });
+}
+
+// ---------- Desfazer item do histórico ----------
+async function undoActivity(entry){
+  if(!entry.snapshot_before && !entry.snapshot_after){
+    alert('Esta entrada é antiga e não tem snapshot salvo — não é possível desfazê-la.');
+    return;
+  }
+  const desc = `${ACTION_LABEL[entry.action] || entry.action}: "${entry.text || ''}"`;
+  const ok = confirm(`Desfazer: ${desc}?`);
+  if(!ok) return;
+
+  try{
+    if(entry.action === 'add'){
+      // Desfazer add = excluir o evento criado
+      if(!entry.event_id){ alert('Sem event_id — não é possível desfazer.'); return; }
+      const { data: existing } = await sb.from(TABLE).select('id').eq('id', entry.event_id).single();
+      if(!existing){ alert('Evento não encontrado — pode já ter sido excluído.'); return; }
+      // Aviso de conflito: verificar se foi editado depois
+      await warnIfConflict(entry);
+      const { error } = await sb.from(TABLE).delete().eq('id', entry.event_id);
+      if(error) throw error;
+      await loadData();
+      logActivity('delete', { event_id: entry.event_id, month: entry.month, day: entry.day, text: `desfez: ${entry.text}`, category: entry.category });
+
+    } else if(entry.action === 'delete'){
+      // Desfazer delete = recriar o evento
+      const snap = entry.snapshot_before;
+      if(!snap){ alert('Sem snapshot_before — não é possível recriar o evento.'); return; }
+      const inserted = await addEvent(snap.month || entry.month, snap.day || entry.day, snap.text || entry.text, snap.category || entry.category, snap.hour || '', snap.banner_url || null, false, snap.year || selectedYear, snap.location || null, snap.notes || null, snap.created_by || null, null);
+      if(inserted) logActivity('add', { event_id: inserted.id, month: entry.month, day: entry.day, text: `desfez exclusão: ${entry.text}`, category: entry.category });
+
+    } else if(entry.action === 'edit'){
+      const snap = entry.snapshot_before;
+      if(!snap || !entry.event_id){ alert('Sem snapshot_before ou event_id.'); return; }
+      await warnIfConflict(entry);
+      await updateEvent(entry.event_id, snap.text, snap.category, snap.hour || '', undefined, undefined, snap.location || null, snap.notes || null);
+      logActivity('edit', { event_id: entry.event_id, month: entry.month, day: entry.day, text: `desfez edição: ${entry.text}`, category: entry.category });
+    }
+  }catch(err){
+    alert('Erro ao desfazer: ' + err.message);
+  }
+}
+
+async function warnIfConflict(entry){
+  if(!entry.event_id || !entry.created_at) return;
+  const { data: log } = await sb.from('mural_activity_log').select('created_at').eq('event_id', entry.event_id).gt('created_at', entry.created_at).limit(1);
+  if(log && log.length > 0){
+    const proceed = confirm('Atenção: este evento foi modificado por outra ação depois desta entrada. Desfazer pode sobrescrever mudanças mais recentes. Continuar mesmo assim?');
+    if(!proceed) throw new Error('cancelado pelo usuário');
+  }
+}
+
 function render(){
   renderCarousel();
   if(permanentBannersListEl) renderPermanentBannersList(permanentBannersListEl);
@@ -1707,6 +2146,10 @@ function render(){
       if(isCurrent && d === TODAY.day){
         cell.classList.add('today');
       }
+      if(isEditor){
+        cell.dataset.dropMonth = month;
+        cell.dataset.dropDay = d;
+      }
 
       const num = document.createElement('div');
       num.className = 'day-num';
@@ -1730,12 +2173,17 @@ function render(){
 
       shown.forEach(({ ev, idx }) => {
         const chip = document.createElement('div');
-        chip.className = 'event-chip';
+        chip.className = 'event-chip' + (ev.recurrence_id ? ' event-chip-recurring' : '');
         chip.style.background = `var(--c-${ev.c})`;
-        chip.textContent = ev.t;
+        chip.textContent = (ev.recurrence_id ? '🔁 ' : '') + ev.t;
         if(isEditor){
           chip.title = ev.t + (ev.h ? ' — ' + ev.h : '') + ' (clique para editar)';
+          chip.setAttribute('draggable', 'true');
+          chip.dataset.evMonth = month;
+          chip.dataset.evDay = d;
+          chip.dataset.evIdx = idx;
           chip.onclick = () => openEditor(month, d, idx);
+          setupChipDrag(chip);
         } else {
           chip.title = ev.t + (ev.h ? ' — ' + ev.h : '');
           chip.style.cursor = 'default';

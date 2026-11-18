@@ -436,6 +436,14 @@
     flex:none;
   }
   .event-chip:hover{ filter:brightness(0.94); }
+  .event-chip[draggable="true"]{ cursor:grab; }
+  .event-chip[draggable="true"]:active{ cursor:grabbing; }
+
+  .day-cell.drag-over{
+    outline:2px dashed #6C9BD1;
+    outline-offset:-2px;
+    background:rgba(108,155,209,0.12);
+  }
 
   .add-btn{
     font-size:13px;
