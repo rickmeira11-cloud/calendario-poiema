@@ -614,7 +614,7 @@
     opacity:0;
     pointer-events:none;
     transition:opacity 0.25s, transform 0.25s;
-    z-index:200;
+    z-index:90;
   }
   #backToTopBtn.visible{
     opacity:1;
