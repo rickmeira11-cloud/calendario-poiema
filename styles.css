@@ -36,6 +36,36 @@
     margin:0 auto 22px;
     color:#F3F1EA;
   }
+  .header-title-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  #collapseHeaderBtn{
+    background:none;
+    border:none;
+    color:#F3F1EA;
+    opacity:0.5;
+    font-size:13px;
+    cursor:pointer;
+    padding:4px 8px;
+    border-radius:6px;
+    transition:opacity 0.2s, transform 0.25s;
+    flex-shrink:0;
+  }
+  #collapseHeaderBtn:hover{ opacity:1; }
+  #collapseHeaderBtn.collapsed{ transform:rotate(180deg); }
+  #headerCollapsible{
+    overflow:hidden;
+    max-height:600px;
+    transition:max-height 0.35s ease, opacity 0.3s ease;
+    opacity:1;
+  }
+  #headerCollapsible.collapsed{
+    max-height:0;
+    opacity:0;
+  }
   header.top h1{
     font-family:'Poppins',sans-serif;
     font-weight:800;

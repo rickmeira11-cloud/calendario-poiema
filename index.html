@@ -16,7 +16,11 @@
 <body>
 
 <header class="top">
-  <h1><img src="logo-poiema.png" alt="Poiema"> Agenda Poiema BNU</h1>
+  <div class="header-title-row">
+    <h1><img src="logo-poiema.png" alt="Poiema"> Agenda Poiema BNU</h1>
+    <button id="collapseHeaderBtn" type="button" aria-label="Recolher menu" title="Recolher menu">▲</button>
+  </div>
+  <div id="headerCollapsible">
   <p class="sub">Sincronizado em tempo real · clique em qualquer evento para editar · clique em "+" para adicionar</p>
   <div class="toolbar">
     <div class="year-selector" id="yearSelector">
@@ -51,6 +55,7 @@
     ⚠️ Não foi possível conectar ao Supabase. Verifique a URL/chave configuradas, se o script SQL foi executado, e sua conexão de internet.
   </div>
   <div class="legend" id="legend"></div>
+  </div><!-- /headerCollapsible -->
 </header>
 
 <section id="bannerCarousel" class="banner-carousel" style="display:none;" aria-label="Carrossel de eventos"></section>
