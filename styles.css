@@ -497,6 +497,7 @@
     color:#6B5530;
     background:#F2E6C9;
     border:none;
+    white-space:nowrap;
     border-radius:3px;
     text-align:center;
     cursor:pointer;
@@ -965,7 +966,7 @@
     .month-card:hover{ transform:none; }
 
     .days-grid{ grid-auto-rows:64px; gap:2px; }
-    .day-cell{ padding:2px 2px 1px; }
+    .day-cell{ padding:2px 2px 1px; min-height:64px; overflow:hidden; }
     .day-num{ font-size:9px; }
     .event-chip{
       font-size:8px;
@@ -985,6 +986,7 @@
 
   @media (max-width: 380px){
     .days-grid{ grid-auto-rows:58px; }
+    .day-cell{ min-height:58px; }
     .event-chip{ font-size:7.5px; }
   }
 
