@@ -678,81 +678,166 @@ function updateAuthUI(){
 }
 
 function openLoginModal(){
+  const close = () => { if(document.body.contains(overlay)) document.body.removeChild(overlay); };
+
   const overlay = document.createElement('div');
   overlay.className = 'editor-overlay';
+  overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
 
   const pop = document.createElement('div');
-  pop.className = 'editor-pop';
-  pop.style.maxWidth = '340px';
+  pop.className = 'login-pop';
+  pop.addEventListener('click', e => e.stopPropagation());
 
-  const title = document.createElement('h3');
-  title.style.cssText = 'margin:0 0 14px;font-family:Poppins,sans-serif;font-size:16px;';
-  title.textContent = 'Entrar no Mural';
-  pop.appendChild(title);
+  // --- Cabeçalho com marca ---
+  const header = document.createElement('div');
+  header.className = 'login-pop-header';
+  const logoImg = document.createElement('img');
+  logoImg.src = 'logo-poiema.png';
+  logoImg.alt = 'Poiema';
+  header.appendChild(logoImg);
+  const h2 = document.createElement('h2');
+  h2.textContent = 'Entrar no Mural';
+  header.appendChild(h2);
+  const sub = document.createElement('p');
+  sub.textContent = 'Acesso para a equipe da Poiema Blumenau';
+  header.appendChild(sub);
+  pop.appendChild(header);
 
-  const emailInput = document.createElement('input');
-  emailInput.type = 'email';
-  emailInput.placeholder = 'E-mail';
-  emailInput.autocomplete = 'email';
-  emailInput.style.cssText = 'width:100%;font-family:Inter,sans-serif;font-size:14px;padding:8px 10px;border:1.5px solid #D4CFC6;border-radius:8px;background:#FCFBF7;color:#2B2A28;box-sizing:border-box;margin-bottom:8px;';
-  pop.appendChild(emailInput);
+  // --- Corpo com campos ---
+  const body = document.createElement('div');
+  body.className = 'login-pop-body';
 
-  const passInput = document.createElement('input');
-  passInput.type = 'password';
-  passInput.placeholder = 'Senha';
-  passInput.autocomplete = 'current-password';
-  passInput.style.cssText = emailInput.style.cssText;
-  pop.appendChild(passInput);
+  // Campo e-mail
+  function makeField(labelText, inputType, iconChar, autocompleteVal, placeholder, hasToggle){
+    const field = document.createElement('div');
+    field.className = 'login-field';
+    const lbl = document.createElement('label');
+    const inputId = 'login-' + autocompleteVal.replace(/[^a-z]/g,'');
+    lbl.setAttribute('for', inputId);
+    lbl.textContent = labelText;
+    field.appendChild(lbl);
+    const wrap = document.createElement('div');
+    wrap.className = 'login-field-wrap';
+    const icon = document.createElement('span');
+    icon.className = 'login-field-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = iconChar;
+    wrap.appendChild(icon);
+    const input = document.createElement('input');
+    input.type = inputType;
+    input.id = inputId;
+    input.placeholder = placeholder;
+    input.autocomplete = autocompleteVal;
+    input.className = 'login-input' + (hasToggle ? ' has-toggle' : '');
+    wrap.appendChild(input);
+    if(hasToggle){
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'login-toggle-pass';
+      toggleBtn.setAttribute('aria-label', 'Mostrar/ocultar senha');
+      toggleBtn.textContent = '👁';
+      toggleBtn.addEventListener('click', () => {
+        const showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        toggleBtn.textContent = showing ? '👁' : '🙈';
+        toggleBtn.setAttribute('aria-pressed', String(!showing));
+      });
+      wrap.appendChild(toggleBtn);
+    }
+    field.appendChild(wrap);
+    return { field, input };
+  }
+
+  const { field: emailField, input: emailInput } = makeField('E-mail', 'email', '✉', 'email', 'voce@exemplo.com', false);
+  const { field: passField, input: passInput } = makeField('Senha', 'password', '🔒', 'current-password', 'Sua senha', true);
+  body.appendChild(emailField);
+  body.appendChild(passField);
 
   const msgEl = document.createElement('p');
-  msgEl.style.cssText = 'font-size:12px;color:#C0392B;margin:0 0 8px;min-height:16px;';
-  pop.appendChild(msgEl);
+  msgEl.className = 'login-msg';
+  body.appendChild(msgEl);
 
-  const actions = document.createElement('div');
-  actions.className = 'editor-actions';
+  pop.appendChild(body);
 
-  const cancelBtn = document.createElement('button');
-  cancelBtn.className = 'btn-cancel';
-  cancelBtn.textContent = 'Cancelar';
-  cancelBtn.onclick = () => document.body.removeChild(overlay);
-  actions.appendChild(cancelBtn);
+  // --- Rodapé com botões ---
+  const foot = document.createElement('div');
+  foot.className = 'login-pop-foot';
 
   const loginBtn = document.createElement('button');
-  loginBtn.className = 'btn-save';
+  loginBtn.type = 'button';
+  loginBtn.className = 'login-btn-primary';
   loginBtn.textContent = 'Entrar';
+
+  function translateAuthError(msg){
+    if(!msg) return 'Erro ao entrar.';
+    if(/invalid.*credentials|invalid login/i.test(msg)) return 'E-mail ou senha incorretos.';
+    if(/email.*not.*confirmed/i.test(msg)) return 'Confirme seu e-mail antes de entrar.';
+    if(/too many requests/i.test(msg)) return 'Muitas tentativas. Aguarde e tente novamente.';
+    return msg;
+  }
+
   loginBtn.onclick = async () => {
+    msgEl.className = 'login-msg';
+    msgEl.textContent = '';
     const email = emailInput.value.trim();
     const pass = passInput.value;
-    if(!email || !pass){ msgEl.textContent = 'Preencha e-mail e senha.'; return; }
+    if(!email || !pass){
+      msgEl.className = 'login-msg error';
+      msgEl.textContent = 'Preencha e-mail e senha.';
+      return;
+    }
     loginBtn.disabled = true;
     loginBtn.textContent = 'Entrando…';
     const { error } = await sb.auth.signInWithPassword({ email, password: pass });
     if(error){
-      msgEl.textContent = error.message || 'Erro ao entrar.';
+      msgEl.className = 'login-msg error';
+      msgEl.textContent = translateAuthError(error.message);
       loginBtn.disabled = false;
       loginBtn.textContent = 'Entrar';
     } else {
-      document.body.removeChild(overlay);
+      close();
     }
   };
-  actions.appendChild(loginBtn);
-  pop.appendChild(actions);
+  foot.appendChild(loginBtn);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'login-btn-ghost';
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.onclick = close;
+  foot.appendChild(cancelBtn);
 
   const forgotLink = document.createElement('a');
   forgotLink.href = '#';
-  forgotLink.style.cssText = 'display:block;text-align:center;font-size:12px;color:#9C9890;margin-top:10px;';
+  forgotLink.className = 'login-forgot';
   forgotLink.textContent = 'Esqueci a senha';
   forgotLink.onclick = async (e) => {
     e.preventDefault();
     const email = emailInput.value.trim();
-    if(!email){ msgEl.textContent = 'Informe o e-mail acima primeiro.'; return; }
+    if(!email){
+      msgEl.className = 'login-msg error';
+      msgEl.textContent = 'Informe o e-mail acima primeiro.';
+      return;
+    }
     const { error } = await sb.auth.resetPasswordForEmail(email);
-    if(error){ msgEl.style.color = '#C0392B'; msgEl.textContent = error.message; }
-    else { msgEl.style.color = '#27AE60'; msgEl.textContent = 'Link de redefinição enviado para ' + email; }
+    msgEl.className = 'login-msg ' + (error ? 'error' : 'success');
+    msgEl.textContent = error
+      ? (error.message || 'Erro ao enviar.')
+      : 'Link de redefinição enviado para ' + email;
   };
-  pop.appendChild(forgotLink);
+  foot.appendChild(forgotLink);
 
-  passInput.addEventListener('keydown', e => { if(e.key === 'Enter') loginBtn.click(); });
+  pop.appendChild(foot);
+
+  // Enter envia de qualquer campo
+  [emailInput, passInput].forEach(inp => {
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter') loginBtn.click(); });
+  });
+
+  // Esc fecha
+  const onKeydown = e => { if(e.key === 'Escape'){ close(); document.removeEventListener('keydown', onKeydown); } };
+  document.addEventListener('keydown', onKeydown);
+
   overlay.appendChild(pop);
   document.body.appendChild(overlay);
   setTimeout(() => emailInput.focus(), 50);

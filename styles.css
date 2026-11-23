@@ -782,6 +782,168 @@
   .btn-cancel{ background:#EFEDE6; color:#555; }
   .btn-cancel:hover{ background:#E3E0D6; }
 
+  /* ---- Modal de Login ---- */
+  .login-pop{
+    background:var(--paper);
+    border-radius:16px;
+    width:380px;
+    max-width:100%;
+    max-height:calc(100vh - 96px);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,0.45);
+  }
+  .login-pop-header{
+    padding:32px 32px 24px;
+    text-align:center;
+    border-bottom:1px solid var(--paper-line);
+    background:var(--paper);
+  }
+  .login-pop-header img{
+    height:36px;
+    width:auto;
+    margin-bottom:16px;
+    display:block;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .login-pop-header h2{
+    margin:0 0 6px;
+    font-family:'Poppins',sans-serif;
+    font-weight:700;
+    font-size:20px;
+    color:var(--ink);
+  }
+  .login-pop-header p{
+    margin:0;
+    font-size:13px;
+    color:var(--ink-soft);
+    line-height:1.4;
+  }
+  .login-pop-body{
+    padding:28px 32px 24px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    overflow-y:auto;
+    flex:1;
+    min-height:0;
+  }
+  .login-field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .login-field label{
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .login-field-wrap{
+    position:relative;
+    display:flex;
+    align-items:center;
+  }
+  .login-field-icon{
+    position:absolute;
+    left:12px;
+    font-size:15px;
+    line-height:1;
+    color:var(--ink-soft);
+    pointer-events:none;
+    top:50%;
+    transform:translateY(-50%);
+  }
+  .login-input{
+    width:100%;
+    height:44px;
+    padding:0 12px 0 38px;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    color:var(--ink);
+    background:var(--paper);
+    border:1.5px solid var(--paper-line);
+    border-radius:10px;
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .login-input:focus{
+    border-color:var(--pin);
+    box-shadow:0 0 0 3px rgba(226,114,91,0.15);
+  }
+  .login-input.has-toggle{ padding-right:44px; }
+  .login-toggle-pass{
+    position:absolute;
+    right:10px;
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:4px;
+    color:var(--ink-soft);
+    font-size:16px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    top:50%;
+    transform:translateY(-50%);
+    border-radius:4px;
+    transition:color .15s;
+  }
+  .login-toggle-pass:hover{ color:var(--ink); }
+  .login-msg{
+    font-size:13px;
+    min-height:18px;
+    text-align:center;
+  }
+  .login-msg.error{ color:#C0392B; }
+  .login-msg.success{ color:#27AE60; }
+  .login-pop-foot{
+    padding:0 32px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    align-items:center;
+  }
+  .login-btn-primary{
+    width:100%;
+    height:46px;
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    transition:background .15s, transform .1s;
+    letter-spacing:0.01em;
+  }
+  .login-btn-primary:hover:not(:disabled){ background:#111; transform:translateY(-1px); }
+  .login-btn-primary:disabled{ opacity:0.6; cursor:not-allowed; transform:none; }
+  .login-btn-ghost{
+    background:none;
+    border:none;
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    font-weight:500;
+    color:var(--ink-soft);
+    cursor:pointer;
+    padding:4px 8px;
+    border-radius:6px;
+    transition:color .15s, background .15s;
+  }
+  .login-btn-ghost:hover{ color:var(--ink); background:var(--paper-line); }
+  .login-forgot{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    text-decoration:none;
+    padding:2px 4px;
+    border-radius:4px;
+    transition:color .15s;
+  }
+  .login-forgot:hover{ color:var(--pin); }
+
   /* ---- Painel de revisão de mudanças da planilha ---- */
   .review-pop{
     background:#fff;
@@ -1035,6 +1197,10 @@
     .weekdays span{ font-size:9px; }
 
     .editor-pop, .review-pop, .day-pop, .sub-pop{ width:100%; }
+    .login-pop{ width:100%; }
+    .login-pop-header{ padding:24px 20px 20px; }
+    .login-pop-body{ padding:20px 20px 16px; }
+    .login-pop-foot{ padding:0 20px 24px; }
   }
 
   @media (max-width: 380px){
