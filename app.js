@@ -650,9 +650,12 @@ function renderUpcoming(){
 
 // ---------- Autenticação (Supabase Auth) ----------
 let isEditor = false;
+let isAdmin = false;
 let currentUser = null;
 
-const EDITOR_ONLY_BTNS = ['syncBtn','pendingBtn','permanentBannersBtn','exportBtn','importBtn'];
+const ADMIN_EMAIL = 'rickmeira11@gmail.com';
+const EDITOR_ONLY_BTNS = [];
+const ADMIN_ONLY_BTNS = ['syncBtn','pendingBtn','permanentBannersBtn','exportBtn','importBtn'];
 
 function updateAuthUI(){
   const btn = document.getElementById('authBtn');
@@ -667,6 +670,10 @@ function updateAuthUI(){
   EDITOR_ONLY_BTNS.forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = isEditor ? '' : 'none';
+  });
+  ADMIN_ONLY_BTNS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = isAdmin ? '' : 'none';
   });
 }
 
@@ -757,12 +764,14 @@ async function initAuth(){
   if(session){
     currentUser = session.user;
     isEditor = true;
+    isAdmin = session.user?.email === ADMIN_EMAIL;
   }
   updateAuthUI();
   updateHeaderSub();
   sb.auth.onAuthStateChange((_event, session) => {
     currentUser = session?.user || null;
     isEditor = !!session;
+    isAdmin = session?.user?.email === ADMIN_EMAIL;
     updateAuthUI();
     updateHeaderSub();
     if(session) render(); // re-render para mostrar controles de edição
