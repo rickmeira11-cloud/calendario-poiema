@@ -2194,6 +2194,10 @@ function render(){
   const board = document.getElementById('board');
   board.innerHTML = '';
 
+  // Determine past vs current/future split
+  const pastCards = [];
+  const futureCards = [];
+
   Object.keys(MONTH_NAMES).map(Number).forEach(month => {
     const card = document.createElement('div');
     card.className = 'month-card';
@@ -2310,8 +2314,73 @@ function render(){
     }
 
     card.appendChild(grid);
-    board.appendChild(card);
+
+    if(card.classList.contains('month-past')) pastCards.push(card);
+    else futureCards.push(card);
   });
+
+  // Collapsible past-months section (only when viewing current year and there are past months)
+  if(pastCards.length > 0 && selectedYear === TODAY.year){
+    const collapsed = localStorage.getItem('pastMonthsCollapsed') !== 'false'; // default collapsed
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.id = 'pastMonthsToggle';
+    toggle.className = 'past-months-toggle';
+
+    const firstMonthName = MONTH_NAMES[pastCards[0].id.replace('month-card-','')];
+    const lastMonthName  = MONTH_NAMES[pastCards[pastCards.length-1].id.replace('month-card-','')];
+    const rangeLabel = pastCards.length === 1 ? firstMonthName : `${firstMonthName} – ${lastMonthName}`;
+
+    function updateToggleLabel(isCollapsed){
+      toggle.textContent = isCollapsed
+        ? `▶ Meses anteriores (${rangeLabel})`
+        : `▼ Meses anteriores (${rangeLabel})`;
+      toggle.setAttribute('aria-expanded', String(!isCollapsed));
+    }
+
+    const wrap = document.createElement('div');
+    wrap.id = 'pastMonthsWrap';
+    wrap.className = 'past-months-wrap board-grid';
+
+    pastCards.forEach(c => wrap.appendChild(c));
+
+    if(collapsed){
+      wrap.style.maxHeight = '0';
+      wrap.style.overflow = 'hidden';
+    } else {
+      wrap.style.maxHeight = '';
+      wrap.style.overflow = '';
+    }
+    updateToggleLabel(collapsed);
+
+    toggle.addEventListener('click', () => {
+      const nowCollapsed = wrap.style.maxHeight === '0px' || wrap.style.maxHeight === '0';
+      if(nowCollapsed){
+        wrap.style.maxHeight = wrap.scrollHeight + 'px';
+        wrap.style.overflow = '';
+        setTimeout(() => { wrap.style.maxHeight = ''; }, 350);
+        localStorage.setItem('pastMonthsCollapsed', 'false');
+        updateToggleLabel(false);
+      } else {
+        wrap.style.maxHeight = wrap.scrollHeight + 'px';
+        requestAnimationFrame(() => {
+          wrap.style.maxHeight = '0';
+          wrap.style.overflow = 'hidden';
+        });
+        localStorage.setItem('pastMonthsCollapsed', 'true');
+        updateToggleLabel(true);
+      }
+    });
+
+    board.appendChild(toggle);
+    board.appendChild(wrap);
+  } else {
+    // For past years or when no past months, show all cards directly
+    pastCards.forEach(c => board.appendChild(c));
+  }
+
+  futureCards.forEach(c => board.appendChild(c));
 
   renderUpcoming();
   scrollToCurrentMonthOnce();

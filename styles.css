@@ -126,6 +126,38 @@
     white-space:nowrap;
   }
   .toolbar-link-btn:hover{ background:#3A70A8; transform:translateY(-1px); }
+
+  /* Meses anteriores colapsável */
+  .past-months-toggle{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:#2a2d33;
+    color:#9ba3af;
+    border:1px solid #3a3f47;
+    border-radius:10px;
+    padding:12px 18px;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    margin-bottom:16px;
+    transition:background .15s ease, color .15s ease;
+  }
+  .past-months-toggle:hover{
+    background:#33383f;
+    color:#c8d0da;
+  }
+  .past-months-wrap{
+    transition:max-height .35s ease, opacity .35s ease;
+    opacity:1;
+    overflow:hidden;
+  }
+  .past-months-wrap[style*="max-height: 0"],
+  .past-months-wrap[style*="max-height:0"]{
+    opacity:0.4;
+  }
+
   /* seletor de ano */
   .year-selector{
     display:flex;
