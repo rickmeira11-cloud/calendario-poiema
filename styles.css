@@ -690,9 +690,10 @@
     border-radius:12px;
     width:300px;
     max-width:100%;
-    max-height:calc(100% - 48px);
+    max-height:calc(100vh - 96px);
     display:flex;
     flex-direction:column;
+    overflow:hidden;
     box-shadow:0 20px 50px rgba(0,0,0,0.4);
   }
   .editor-pop-body{
