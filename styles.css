@@ -108,6 +108,24 @@
     transition:transform .12s ease, background .12s ease;
   }
   .toolbar button:hover{ background:#474C54; transform:translateY(-1px); }
+  .toolbar-link-btn{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    padding:9px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    border:none;
+    background:#2E5C8A;
+    color:#E8F0F8;
+    transition:transform .12s ease, background .12s ease;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    white-space:nowrap;
+  }
+  .toolbar-link-btn:hover{ background:#3A70A8; transform:translateY(-1px); }
   /* seletor de ano */
   .year-selector{
     display:flex;
@@ -949,6 +967,7 @@
     header.top p.sub{ font-size:12px; }
 
     .toolbar button{ font-size:12px; padding:8px 11px; }
+    .toolbar-link-btn{ font-size:12px; padding:8px 11px; }
     .save-status{ width:100%; margin-left:0; justify-content:flex-start; margin-top:4px; }
 
     .upcoming-item{ width:128px; padding:8px 10px; }
