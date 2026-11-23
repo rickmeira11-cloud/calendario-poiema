@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guia do Editor — Mural Poiema Blumenau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1C1F24;
+    --paper:#FCFBF7;
+    --ink:#2B2A28;
+    --ink-soft:#6B6862;
+    --accent:#4A7FC1;
+    --border:#DDD8CC;
+    --yellow:#F2CB52;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.6;
+  }
+
+  /* ---- Capa ---- */
+  .cover{
+    background:var(--bg);
+    color:#F3F1EA;
+    padding:40px 32px 36px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .cover-logo{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .cover-logo img{
+    height:36px;
+    width:auto;
+    filter:invert(1);
+  }
+  .cover-logo span{
+    font-family:'Poppins',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+    opacity:0.7;
+  }
+  .cover h1{
+    font-family:'Poppins',sans-serif;
+    font-weight:800;
+    font-size:clamp(22px,4vw,32px);
+    line-height:1.2;
+  }
+  .cover-meta{
+    font-size:13px;
+    opacity:0.6;
+    display:flex;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .cover-meta a{ color:#F3F1EA; }
+  .cover-note{
+    margin-top:4px;
+    font-size:12px;
+    background:rgba(255,255,255,0.08);
+    border-radius:8px;
+    padding:10px 14px;
+    line-height:1.5;
+    max-width:560px;
+  }
+
+  /* ---- Conteúdo ---- */
+  .content{
+    max-width:720px;
+    margin:0 auto;
+    padding:32px 24px 60px;
+  }
+
+  /* Índice */
+  .toc{
+    background:#F4F2EC;
+    border-radius:10px;
+    padding:18px 20px;
+    margin-bottom:32px;
+  }
+  .toc h2{
+    font-family:'Poppins',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .toc ol{
+    padding-left:18px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+    gap:4px 24px;
+  }
+  .toc li{ font-size:13px; }
+  .toc a{ color:var(--accent); text-decoration:none; }
+  .toc a:hover{ text-decoration:underline; }
+
+  /* Seções */
+  .section{
+    margin-bottom:36px;
+    padding-bottom:36px;
+    border-bottom:1px solid var(--border);
+  }
+  .section:last-child{ border-bottom:none; }
+  .section-num{
+    font-family:'Poppins',sans-serif;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    color:var(--accent);
+    margin-bottom:4px;
+  }
+  .section h2{
+    font-family:'Poppins',sans-serif;
+    font-size:19px;
+    font-weight:700;
+    margin-bottom:14px;
+    line-height:1.3;
+  }
+  .section p{ margin-bottom:10px; font-size:14px; }
+  .section ul, .section ol{
+    padding-left:18px;
+    margin-bottom:10px;
+  }
+  .section li{ font-size:14px; margin-bottom:4px; }
+  .section b{ font-weight:600; }
+  .section code{
+    background:#EDE9DF;
+    border-radius:4px;
+    padding:1px 5px;
+    font-size:12px;
+    font-family:monospace;
+  }
+
+  /* Destaque */
+  .tip{
+    background:#FFF8E1;
+    border-left:3px solid var(--yellow);
+    border-radius:0 8px 8px 0;
+    padding:10px 14px;
+    margin:12px 0;
+    font-size:13px;
+  }
+  .warn{
+    background:#FFF3F0;
+    border-left:3px solid #E2725B;
+    border-radius:0 8px 8px 0;
+    padding:10px 14px;
+    margin:12px 0;
+    font-size:13px;
+  }
+
+  /* Placeholder de print */
+  .print-placeholder{
+    border:2px dashed var(--border);
+    border-radius:8px;
+    padding:20px;
+    margin:14px 0;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12px;
+    font-style:italic;
+    background:#FAFAF8;
+  }
+
+  /* Rodapé */
+  footer{
+    text-align:center;
+    padding:24px;
+    font-size:12px;
+    color:var(--ink-soft);
+    border-top:1px solid var(--border);
+  }
+
+  /* Print */
+  @media print{
+    .cover{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .section{ page-break-inside:avoid; }
+    .toc{ page-break-after:always; }
+    a{ color:inherit !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-logo">
+    <img src="logo-poiema.png" alt="Poiema">
+    <span>Poiema Blumenau</span>
+  </div>
+  <h1>Guia do Editor<br>Mural Poiema Blumenau</h1>
+  <div class="cover-meta">
+    <span>🔗 <a href="https://calendariopoiema.vercel.app" target="_blank">calendariopoiema.vercel.app</a></span>
+    <span>📅 Atualizado em novembro de 2026</span>
+  </div>
+  <div class="cover-note">
+    Este guia é para editores — a equipe que gerencia os eventos do mural.<br>
+    Para imprimir como PDF: Arquivo → Imprimir → <b>Salvar como PDF</b>.
+  </div>
+</div>
+
+<div class="content">
+
+  <nav class="toc">
+    <h2>Índice</h2>
+    <ol>
+      <li><a href="#s1">Visão geral</a></li>
+      <li><a href="#s2">Entrar como editor</a></li>
+      <li><a href="#s3">Criar um evento</a></li>
+      <li><a href="#s4">Evento recorrente</a></li>
+      <li><a href="#s5">Editar, mover e duplicar</a></li>
+      <li><a href="#s6">Excluir</a></li>
+      <li><a href="#s7">Banners / artes</a></li>
+      <li><a href="#s8">Histórico e desfazer</a></li>
+      <li><a href="#s9">Sincronização com a planilha</a></li>
+      <li><a href="#s10">Compartilhar e assinar</a></li>
+      <li><a href="#s11">Dicas e cuidados</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <div class="section" id="s1">
+    <div class="section-num">Seção 1</div>
+    <h2>Visão geral</h2>
+    <p>O Mural é a <b>agenda viva da Poiema Blumenau</b> — todos os eventos do ano em um só lugar, atualizada em tempo real para qualquer pessoa com o link.</p>
+    <p><b>Quem vê o quê:</b> qualquer visitante vê o calendário. Só editores logados podem criar ou alterar eventos.</p>
+    <p><b>Como navegar:</b></p>
+    <ul>
+      <li>Use <b>◀ 2026 ▶</b> (ao lado do título) para trocar de ano.</li>
+      <li>Use <b>"Ir para mês…"</b> na barra de ferramentas para pular diretamente a um mês.</li>
+      <li>Role a página para ver todos os meses em sequência.</li>
+      <li>O dia de hoje aparece com destaque e ponto vermelho.</li>
+    </ul>
+    <div class="print-placeholder">[print: tela inicial do mural com destaque no dia atual]</div>
+  </div>
+
+  <!-- 2 -->
+  <div class="section" id="s2">
+    <div class="section-num">Seção 2</div>
+    <h2>Entrar como editor</h2>
+    <p>Clique em <b>"🔑 Entrar"</b> na barra de ferramentas.</p>
+    <p><b>Primeiro acesso:</b></p>
+    <ol>
+      <li>Você recebeu um convite por e-mail.</li>
+      <li>Clique no link do e-mail.</li>
+      <li>Defina seu nome e senha.</li>
+      <li>Pronto — você é editor.</li>
+    </ol>
+    <p><b>Próximas vezes:</b> no mesmo aparelho/navegador, entra automaticamente. Em outro aparelho, informe e-mail e senha.</p>
+    <div class="tip">💡 Esqueceu a senha? Use "Esqueci a senha" na tela de login.</div>
+    <p>Se você ainda não recebeu convite, fale com o responsável para ser convidado.</p>
+    <div class="print-placeholder">[print: botão "Entrar" na barra de ferramentas]</div>
+  </div>
+
+  <!-- 3 -->
+  <div class="section" id="s3">
+    <div class="section-num">Seção 3</div>
+    <h2>Criar um evento</h2>
+    <p>Clique no <b>"+"</b> do dia desejado (aparece só para editores logados).</p>
+    <p>Preencha o formulário:</p>
+    <ul>
+      <li><b>Descrição</b> — nome do evento</li>
+      <li><b>Horário</b> — ex: <code>18h</code>, <code>9h–12h</code>, <code>13h30</code></li>
+      <li><b>Categoria / Cor</b> — selecione uma das bolinhas coloridas</li>
+      <li><b>Localização</b> — opcional, ex: "Templo sede"</li>
+      <li><b>Observação</b> — informações adicionais opcionais</li>
+      <li><b>Arte / Banner</b> — envie imagem (JPG/PNG/WEBP, até 3 MB) ou cole um link</li>
+    </ul>
+    <p>Clique <b>Salvar</b>. O evento aparece na hora para todos em tempo real.</p>
+    <div class="print-placeholder">[print: modal de criação de evento preenchido]</div>
+  </div>
+
+  <!-- 4 -->
+  <div class="section" id="s4">
+    <div class="section-num">Seção 4</div>
+    <h2>Evento recorrente</h2>
+    <p>Ao criar um evento, use a seção <b>"Repetir"</b> para criar uma série:</p>
+    <ul>
+      <li><b>Semanal</b> — a cada 7 dias</li>
+      <li><b>Quinzenal</b> — a cada 14 dias</li>
+      <li><b>Mensal</b> — mesmo dia todo mês</li>
+    </ul>
+    <p>Defina a <b>data de fim</b> da série. O sistema cria todos os eventos automaticamente de uma vez.</p>
+    <div class="tip">💡 Eventos de uma série têm estilo visual diferente para identificação e ao editar ou excluir perguntam se a ação é "só este" ou "toda a série".</div>
+  </div>
+
+  <!-- 5 -->
+  <div class="section" id="s5">
+    <div class="section-num">Seção 5</div>
+    <h2>Editar, mover e duplicar</h2>
+    <p><b>Editar:</b> clique no evento → faça as alterações → Salvar. Se for recorrente, ele pergunta "só este ou toda a série?".</p>
+    <p><b>Mover (arrastar):</b> clique e segure o card por ~400ms (mobile) ou arraste diretamente (desktop) para outro dia. O sistema pede confirmação antes de aplicar.</p>
+    <p><b>Duplicar:</b> no editor do evento, clique em <b>"Duplicar"</b> e escolha a nova data. Há um atalho "+1 semana" para facilitar.</p>
+    <div class="print-placeholder">[print: modal de edição com botão "Duplicar" visível]</div>
+  </div>
+
+  <!-- 6 -->
+  <div class="section" id="s6">
+    <div class="section-num">Seção 6</div>
+    <h2>Excluir</h2>
+    <p>No editor do evento, clique em <b>"Excluir"</b> (botão vermelho, canto inferior esquerdo).</p>
+    <p>Se for um evento recorrente, o sistema pergunta:</p>
+    <ul>
+      <li><b>"Só este"</b> — remove apenas este evento da série</li>
+      <li><b>"Toda a série"</b> — remove todos os eventos (informa quantos serão apagados antes de confirmar)</li>
+    </ul>
+    <div class="warn">⚠️ A exclusão não pode ser desfeita pelo botão "Excluir". Se precisar reverter, use o <b>Histórico → Desfazer</b>.</div>
+  </div>
+
+  <!-- 7 -->
+  <div class="section" id="s7">
+    <div class="section-num">Seção 7</div>
+    <h2>Banners / artes</h2>
+    <p>No editor do evento, seção <b>"Banner / Arte do evento"</b>:</p>
+    <ul>
+      <li>Envie uma imagem (JPG/PNG/WEBP, até 3 MB) clicando em "📁 Enviar imagem"</li>
+      <li>Ou cole o link de uma imagem já hospedada (começando com <code>https://</code>)</li>
+    </ul>
+    <p>Artes de eventos futuros aparecem automaticamente no <b>carrossel do topo</b>, alternando sozinhas. Quando a data do evento passa, o banner sai do carrossel.</p>
+    <p>Para banners institucionais sem data de expiração (ex: um banner da igreja sempre ativo), use <b>"🖼️ Banners permanentes"</b> na barra de ferramentas.</p>
+    <div class="print-placeholder">[print: carrossel de banners no topo do mural]</div>
+  </div>
+
+  <!-- 8 -->
+  <div class="section" id="s8">
+    <div class="section-num">Seção 8</div>
+    <h2>Histórico e desfazer</h2>
+    <p>Clique em <b>"📋 Histórico"</b> na barra de ferramentas para ver todas as alterações — quem fez, o quê e quando.</p>
+    <p>Cada entrada tem um botão <b>"Desfazer"</b> que reverte aquela ação específica.</p>
+    <div class="tip">💡 Se o evento já foi alterado novamente depois daquela ação, o sistema avisa antes de desfazer para evitar sobrescrever mudanças mais recentes.</div>
+    <div class="print-placeholder">[print: painel de histórico com botão "Desfazer"]</div>
+  </div>
+
+  <!-- 9 -->
+  <div class="section" id="s9">
+    <div class="section-num">Seção 9</div>
+    <h2>Sincronização com a planilha</h2>
+    <p>O mural pode ser comparado com a planilha oficial clicando em <b>"🔄 Verificar mudanças da planilha"</b>.</p>
+    <p>As diferenças encontradas aparecem como <b>propostas</b> — nada muda sozinho. Um editor revisa cada proposta e aprova ou rejeita.</p>
+    <p>Quando há propostas aguardando, o botão <b>"🔔 mudança(s) pendente(s)"</b> aparece na barra de ferramentas.</p>
+    <div class="warn">⚠️ Aprovar uma proposta da planilha altera o mural para todos. Revise com atenção antes de aprovar.</div>
+  </div>
+
+  <!-- 10 -->
+  <div class="section" id="s10">
+    <div class="section-num">Seção 10</div>
+    <h2>Compartilhar e assinar</h2>
+    <p><b>"📅 Assinar no meu calendário"</b> — coloca os eventos no Google Agenda, Apple Calendar ou Outlook da pessoa, sempre atualizados automaticamente. Funciona para qualquer visitante, não só editores.</p>
+    <p><b>"📤 Compartilhar semana"</b> — gera um texto pronto com os eventos da semana, fácil de colar no WhatsApp ou outros aplicativos.</p>
+    <p><b>"⬇️ Exportar backup"</b> — baixa uma cópia de segurança completa dos eventos em formato <code>.json</code>. Use periodicamente para guardar histórico.</p>
+  </div>
+
+  <!-- 11 -->
+  <div class="section" id="s11">
+    <div class="section-num">Seção 11</div>
+    <h2>Dicas e cuidados</h2>
+    <ul>
+      <li>Mudanças são <b>em tempo real</b> e afetam todo mundo — confira antes de salvar.</li>
+      <li>Aprovar propostas da planilha e importar backup afetam todos: use com cuidado.</li>
+      <li>Filtrar categorias (botões <b>"Mostrar todas / Ocultar todas"</b> na legenda) muda <b>só a sua visualização</b>, não afeta os outros usuários.</li>
+      <li>Para recolher o menu de ferramentas e ter mais espaço na tela, clique no <b>▲</b> ao lado do título.</li>
+      <li>Dias com mais de 2 eventos mostram um botão <b>"+N mais"</b> — clique para ver a lista completa do dia.</li>
+      <li>O link do mural: <a href="https://calendariopoiema.vercel.app" target="_blank">calendariopoiema.vercel.app</a></li>
+    </ul>
+    <div class="tip">💡 Em caso de dúvidas ou problemas, entre em contato com o responsável pelo mural.</div>
+  </div>
+
+</div>
+
+<footer>
+  Mural Poiema Blumenau &mdash; <a href="https://calendariopoiema.vercel.app">calendariopoiema.vercel.app</a><br>
+  Guia do Editor &mdash; novembro de 2026
+</footer>
+
+</body>
+</html>

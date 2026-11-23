@@ -759,10 +759,12 @@ async function initAuth(){
     isEditor = true;
   }
   updateAuthUI();
+  updateHeaderSub();
   sb.auth.onAuthStateChange((_event, session) => {
     currentUser = session?.user || null;
     isEditor = !!session;
     updateAuthUI();
+    updateHeaderSub();
     if(session) render(); // re-render para mostrar controles de edição
   });
 }
@@ -2366,9 +2368,103 @@ document.getElementById('monthJump').onchange = function(){
   };
 })();
 
-document.getElementById('addLegendInfo').onclick = () => {
-  alert('Como usar este mural:\n\n• Use ◀ ▶ no topo para alternar entre os anos disponíveis.\n• Clique em qualquer evento para abrir o editor (descrição, horário e categoria/cor).\n• No editor, use "Excluir" para remover o evento.\n• Clique no "+" em qualquer dia para adicionar um evento novo.\n• Dias com mais de 2 eventos mostram um botão "+N mais" — clique nele para ver a lista completa daquele dia.\n• Passe o mouse sobre um evento truncado para ver o texto completo com horário.\n\n📅 Clique em "Assinar no meu calendário" para que os eventos apareçam automaticamente no seu Google Agenda, Apple Calendar ou Outlook — sempre atualizados, sem precisar voltar aqui.\n\n📋 Na primeira edição que você fizer, o mural pergunta como quer ser identificado (não é login, é só pra aparecer no histórico). Clique em "Histórico" pra ver quem alterou o quê e quando. Clique em "(trocar)" ao lado do seu nome se quiser mudar como aparece.\n\nEste mural é compartilhado: todas as pessoas que abrirem este link veem e editam os mesmos dados, em tempo real.\n\nSincronização com a planilha:\n• Clique em "Verificar mudanças da planilha" para comparar com a planilha ao vivo.\n• As diferenças encontradas aparecem como propostas — nada é alterado automaticamente.\n• Clique no sininho "🔔 mudanças pendentes" para revisar e aprovar ou rejeitar cada uma.\n\n• Use "Exportar backup" de vez em quando para guardar uma cópia de segurança.\n• Use "Importar backup" para restaurar a partir de um arquivo .json exportado anteriormente.');
-};
+function updateHeaderSub(){
+  const el = document.getElementById('headerSub');
+  if(!el) return;
+  if(isEditor){
+    el.textContent = 'Clique em qualquer evento para editar · clique em "+" para adicionar um novo';
+  } else {
+    el.textContent = 'Agenda da Igreja Poiema Blumenau · atualizada em tempo real';
+  }
+}
+
+const HELP_SECTIONS = [
+  { title: '1. Visão geral', body: `O Mural é a agenda viva da Poiema Blumenau — todos os eventos do ano em um só lugar, em tempo real.\n\n<b>Quem vê o quê:</b> qualquer pessoa com o link vê o calendário. Só editores logados podem criar ou alterar eventos.\n\n<b>Como navegar:</b> use <b>◀ 2026 ▶</b> para trocar de ano e <b>"Ir para mês…"</b> para pular diretamente a um mês. Role a página para ver todos os meses em sequência. O dia de hoje aparece destacado com um ponto vermelho.` },
+  { title: '2. Entrar como editor', body: `Clique em <b>"🔑 Entrar"</b> na barra de ferramentas.\n\n<b>Primeiro acesso:</b> você recebeu um convite por e-mail. Clique no link do e-mail, defina seu nome e senha. Pronto — você é editor.\n\n<b>Próximas vezes:</b> no mesmo aparelho/navegador entra direto. Em outro aparelho, informe e-mail e senha normalmente.\n\n<b>Esqueceu a senha?</b> Use "Esqueci a senha" na tela de login.\n\nSe você ainda não recebeu convite, fale com o responsável para ser convidado pelo painel.` },
+  { title: '3. Criar um evento', body: `Clique no <b>"+"</b> do dia desejado (aparece só para editores logados).\n\nPreencha:\n• <b>Descrição</b> — nome do evento\n• <b>Horário</b> — ex: 18h, 9h–12h\n• <b>Categoria/Cor</b> — selecione uma das bolinhas coloridas\n• <b>Localização</b> e <b>Observação</b> — opcionais\n• <b>Arte/Banner</b> — envie uma imagem (JPG/PNG/WEBP, até 3 MB) ou cole um link\n\nClique <b>Salvar</b>. O evento aparece na hora para todos.` },
+  { title: '4. Evento recorrente', body: `Ao criar um evento, use a seção <b>"Repetir"</b> para escolher:\n• <b>Semanal</b> — a cada 7 dias\n• <b>Quinzenal</b> — a cada 14 dias\n• <b>Mensal</b> — mesmo dia todo mês\n\nDefina também a data de fim. O sistema cria todos os eventos da série de uma vez.\n\nEventos de uma série têm estilo visual diferente para identificação.` },
+  { title: '5. Editar, mover e duplicar', body: `<b>Editar:</b> clique no evento → faça as alterações → Salvar. Se for recorrente, ele pergunta "só este ou toda a série?".\n\n<b>Mover (arrastar):</b> clique e segure o card por ~400ms (mobile) ou arraste diretamente (desktop) para outro dia. O sistema pede confirmação antes de mover.\n\n<b>Duplicar:</b> no editor do evento, clique em <b>"Duplicar"</b> e escolha a nova data (atalho: +1 semana disponível).` },
+  { title: '6. Excluir', body: `No editor do evento, clique em <b>"Excluir"</b> (botão vermelho).\n\nSe for um evento recorrente, o sistema pergunta:\n• <b>"Só este"</b> — remove apenas este evento da série\n• <b>"Toda a série"</b> — remove todos os eventos (informa quantos serão apagados antes de confirmar)` },
+  { title: '7. Banners / artes', body: `No editor do evento, seção <b>"Banner / Arte do evento"</b>:\n• Envie uma imagem (até 3 MB, JPG/PNG/WEBP) ou cole o link de uma imagem hospedada.\n\nArtes de eventos futuros aparecem automaticamente no <b>carrossel do topo</b>, alternando sozinhas.\n\nQuando a data do evento passa, o banner sai do carrossel automaticamente.\n\nPara banners institucionais sem data de expiração (ex: um banner da igreja sempre ativo), use <b>"🖼️ Banners permanentes"</b>.` },
+  { title: '8. Histórico e desfazer', body: `Clique em <b>"📋 Histórico"</b> para ver todas as alterações feitas no mural — quem alterou, o quê e quando.\n\nCada entrada tem um botão <b>"Desfazer"</b> que reverte aquela ação. Se o evento já foi alterado novamente depois, o sistema avisa antes de desfazer.` },
+  { title: '9. Sincronização com a planilha', body: `O mural pode ser comparado com a planilha oficial clicando em <b>"🔄 Verificar mudanças da planilha"</b>.\n\nAs diferenças encontradas aparecem como <b>propostas</b> — nada muda sozinho. Um editor revisa cada proposta e aprova ou rejeita (ícone de sininho <b>"🔔 mudança(s) pendente(s)"</b> aparece quando há propostas aguardando).` },
+  { title: '10. Compartilhar e assinar', body: `<b>"📅 Assinar no meu calendário"</b> — coloca os eventos no Google Agenda, Apple Calendar ou Outlook da pessoa, sempre atualizados automaticamente. Funciona para qualquer visitante, não só editores.\n\n<b>"📤 Compartilhar semana"</b> — gera um texto pronto com os eventos da semana, fácil de colar no WhatsApp.\n\n<b>"⬇️ Exportar backup"</b> — baixa uma cópia de segurança completa em .json.` },
+  { title: '11. Dicas e cuidados', body: `• Mudanças são <b>em tempo real</b> e afetam todo mundo — confira antes de salvar.\n• Aprovar propostas da planilha e importar backup afetam todos: use com cuidado.\n• Filtrar categorias pela legenda (botões "Mostrar todas / Ocultar todas") muda <b>só a sua visualização</b>, não afeta os outros.\n• Para recolher o menu de ferramentas e ter mais espaço, clique no <b>▲</b> ao lado do título.` },
+];
+
+function openHelpModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'editor-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Como usar o Mural');
+
+  const pop = document.createElement('div');
+  pop.className = 'editor-pop';
+  pop.style.maxWidth = '520px';
+
+  const body = document.createElement('div');
+  body.className = 'editor-pop-body';
+  pop.appendChild(body);
+
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
+  const ttl = document.createElement('h3');
+  ttl.style.cssText = 'margin:0;font-family:Poppins,sans-serif;font-size:16px;';
+  ttl.textContent = 'Como usar o Mural';
+  hdr.appendChild(ttl);
+  body.appendChild(hdr);
+
+  HELP_SECTIONS.forEach((sec, i) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'border:1px solid #EAE6DA;border-radius:8px;margin-bottom:6px;overflow:hidden;';
+
+    const btn = document.createElement('button');
+    btn.style.cssText = 'width:100%;text-align:left;background:#FAFAF7;border:none;padding:10px 12px;font-family:Poppins,sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:#2B2A28;';
+    btn.innerHTML = `${sec.title}<span class="help-arrow" style="font-size:10px;transition:transform 0.2s;">▼</span>`;
+
+    const content = document.createElement('div');
+    content.style.cssText = 'padding:10px 12px 12px;font-size:13px;line-height:1.6;color:#3A3835;display:none;border-top:1px solid #EAE6DA;white-space:pre-wrap;';
+    content.innerHTML = sec.body.replace(/\n/g, '<br>');
+
+    btn.onclick = () => {
+      const open = content.style.display !== 'none';
+      content.style.display = open ? 'none' : 'block';
+      btn.querySelector('.help-arrow').style.transform = open ? '' : 'rotate(180deg)';
+    };
+
+    if(i === 0){
+      content.style.display = 'block';
+      btn.querySelector('.help-arrow') && setTimeout(() => btn.querySelector('.help-arrow').style.transform = 'rotate(180deg)', 0);
+    }
+
+    wrap.appendChild(btn);
+    wrap.appendChild(content);
+    body.appendChild(wrap);
+  });
+
+  const guideLink = document.createElement('div');
+  guideLink.style.cssText = 'margin-top:12px;text-align:center;font-size:12px;color:#6B6860;';
+  guideLink.innerHTML = '📄 <a href="/guia-mural.html" target="_blank" style="color:#4A7FC1;text-decoration:none;font-weight:600;">Ver guia completo / imprimir como PDF</a>';
+  body.appendChild(guideLink);
+
+  const foot = document.createElement('div');
+  foot.className = 'editor-pop-foot';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-save';
+  closeBtn.textContent = 'Fechar';
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  foot.appendChild(closeBtn);
+  pop.appendChild(foot);
+
+  overlay.appendChild(pop);
+  overlay.addEventListener('click', e => { if(e.target === overlay) document.body.removeChild(overlay); });
+  document.addEventListener('keydown', function esc(e){ if(e.key === 'Escape' && document.body.contains(overlay)){ document.body.removeChild(overlay); document.removeEventListener('keydown', esc); } });
+  document.body.appendChild(overlay);
+  closeBtn.focus();
+}
+
+document.getElementById('addLegendInfo').onclick = openHelpModal;
 
 // ---------- Inicialização ----------
 if(!isConfigured){
