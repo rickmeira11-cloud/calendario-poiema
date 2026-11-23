@@ -2473,7 +2473,7 @@ function openHelpModal(){
   closeBtn.focus();
 }
 
-document.getElementById('addLegendInfo').onclick = openHelpModal;
+// addLegendInfo button removed — help accessible via Guia de uso link
 
 // ---------- Inicialização ----------
 if(!isConfigured){
