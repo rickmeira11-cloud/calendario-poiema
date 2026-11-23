@@ -2319,6 +2319,12 @@ function render(){
     else futureCards.push(card);
   });
 
+  // Remove previous past-months elements if re-rendering
+  const oldToggle = document.getElementById('pastMonthsToggle');
+  const oldWrap   = document.getElementById('pastMonthsWrap');
+  if(oldToggle) oldToggle.remove();
+  if(oldWrap)   oldWrap.remove();
+
   // Collapsible past-months section (only when viewing current year and there are past months)
   if(pastCards.length > 0 && selectedYear === TODAY.year){
     const collapsed = localStorage.getItem('pastMonthsCollapsed') !== 'false'; // default collapsed
@@ -2373,10 +2379,11 @@ function render(){
       }
     });
 
-    board.appendChild(toggle);
-    board.appendChild(wrap);
+    // Insert toggle and wrap as siblings BEFORE #board (not inside the grid)
+    board.parentNode.insertBefore(toggle, board);
+    board.parentNode.insertBefore(wrap, board);
   } else {
-    // For past years or when no past months, show all cards directly
+    // For past years or when no past months, show all cards directly in board
     pastCards.forEach(c => board.appendChild(c));
   }
 
