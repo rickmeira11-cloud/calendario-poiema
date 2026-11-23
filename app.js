@@ -1477,7 +1477,7 @@ function openEditor(month, day, idx){
     const recLabel = document.createElement('label');
     recLabel.className = 'field-label';
     recLabel.textContent = 'Repetir';
-    pop.appendChild(recLabel);
+    body.appendChild(recLabel);
 
     const recRow = document.createElement('div');
     recRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;';
